@@ -19,12 +19,62 @@ function(input, output, session) {
     ignoreNULL = FALSE
   )
 
+  crop_icon <- function(crop_name) {
+    icon_map <- c(
+      rice = "🌾",
+      maize = "🌽",
+      chickpea = "🫛",
+      kidneybeans = "🫘",
+      pigeonpeas = "🫛",
+      mothbeans = "🫘",
+      mungbean = "🫛",
+      blackgram = "🫘",
+      lentil = "🫘",
+      pomegranate = "🍎",
+      banana = "🍌",
+      mango = "🥭",
+      grapes = "🍇",
+      watermelon = "🍉",
+      muskmelon = "🍈",
+      apple = "🍎",
+      orange = "🍊",
+      papaya = "🥭",
+      coconut = "🥥",
+      cotton = "🧵",
+      jute = "🧵",
+      coffee = "☕"
+    )
+
+    key <- tolower(crop_name)
+    if (!is.null(icon_map[[key]])) icon_map[[key]] else "🌱"
+  }
+
   # Shared dataset loaded in app.R
   csv_data <- reactive({
     crop_data
   })
 
+  # Crop options for feature importance filter
+  importance_crop_choices <- setNames(
+    sort(names(crop_profiles)),
+    tools::toTitleCase(sort(names(crop_profiles)))
+  )
+
+  observe({
+    req(pred())
+    updateSelectInput(
+      session,
+      "importance_crop",
+      choices = importance_crop_choices,
+      selected = pred()$recommended
+    )
+  })
+
   # ── Recommended crop card ─────────────────────────────────────────────────
+  output$recommended_icon <- renderText({
+    crop_icon(pred()$recommended)
+  })
+
   output$recommended_crop <- renderText({
     toupper(pred()$recommended)
   })
@@ -102,8 +152,19 @@ function(input, output, session) {
 
   # ── Feature importance chart ───────────────────────────────────────────────
   output$importance_chart <- renderPlotly({
+    selected_crop <- if (!is.null(input$importance_crop) && nzchar(input$importance_crop)) {
+      tolower(input$importance_crop)
+    } else {
+      pred()$recommended
+    }
+
+    importance_df <- crop_feature_importance[[selected_crop]]
+    if (is.null(importance_df)) {
+      importance_df <- feature_importance
+    }
+
     plot_ly(
-      data   = feature_importance,
+      data   = importance_df,
       x      = ~factor(feature, levels = feature),
       y      = ~importance,
       type   = "bar",

@@ -1,5 +1,5 @@
 # global.R – Shared data, libraries, and model logic
-
+install.packages(c("shiny", "shinydashboard", "plotly"), repos="https://cloud.r-project.org/")
 library(shiny)
 library(shinydashboard)
 library(plotly)
@@ -9,7 +9,7 @@ csv_path <- "Crop_recommendation.csv"
 
 if (!file.exists(csv_path)) {
   stop(paste0("Dataset not found at: ", normalizePath(csv_path, winslash = "/", mustWork = FALSE)))
-}
+} 
 
 crop_data <- read.csv(csv_path, stringsAsFactors = FALSE)
 
@@ -43,6 +43,43 @@ feature_importance <- data.frame(
   importance = c(0.35, 0.25, 0.15, 0.10, 0.08, 0.05, 0.02),
   stringsAsFactors = FALSE
 )
+
+# ── Crop-specific feature importance (crop vs. rest effect size) ────────────
+importance_features <- c("rainfall", "N", "P", "K", "temperature", "humidity", "ph")
+importance_labels <- c(
+  rainfall = "Rainfall",
+  N = "Nitrogen",
+  P = "Phosphorus",
+  K = "Potassium",
+  temperature = "Temperature",
+  humidity = "Humidity",
+  ph = "pH"
+)
+
+crop_feature_importance <- lapply(names(crop_profiles), function(crop) {
+  in_crop <- crop_data[crop_data$label == crop, , drop = FALSE]
+  out_crop <- crop_data[crop_data$label != crop, , drop = FALSE]
+
+  in_mean <- sapply(importance_features, function(f) mean(in_crop[[f]], na.rm = TRUE))
+  out_mean <- sapply(importance_features, function(f) mean(out_crop[[f]], na.rm = TRUE))
+  all_sd <- sapply(importance_features, function(f) sd(crop_data[[f]], na.rm = TRUE))
+
+  all_sd[is.na(all_sd) | all_sd == 0] <- 1
+  scores <- abs(in_mean - out_mean) / all_sd
+
+  if (sum(scores) == 0 || anyNA(scores)) {
+    scores <- rep(1 / length(importance_features), length(importance_features))
+  } else {
+    scores <- scores / sum(scores)
+  }
+
+  data.frame(
+    feature = unname(importance_labels[importance_features]),
+    importance = as.numeric(scores),
+    stringsAsFactors = FALSE
+  )
+})
+names(crop_feature_importance) <- names(crop_profiles)
 
 # ── Prediction function (required by server.r) ──────────────────────────────
 predict_crop <- function(N, P, K, temp, hum, ph, rain) {

@@ -529,7 +529,7 @@ shinyUI(
           display: grid;
           grid-template-columns: 78px minmax(0, 1fr) minmax(160px, 210px);
           align-items: center;
-          gap: 0.55rem;
+          gap: 0.9rem;
         }
 
         .recommend-icon {
@@ -804,7 +804,10 @@ shinyUI(
                   class = "card",
                   div(
                     class = "recommend-layout",
-                    div(class = "recommend-icon", "🌾"),
+                    div(
+                      class = "recommend-icon",
+                      textOutput("recommended_icon", container = span)
+                    ),
                     div(
                       class = "recommend-content",
                       div(class = "recommend-title", "Your Recommended Crop:"),
@@ -844,6 +847,7 @@ shinyUI(
                   div(
                     class = "card",
                     div(class = "section-title", "Feature Importance"),
+                    selectInput("importance_crop", "Select crop", choices = NULL, width = "100%"),
                     plotlyOutput("importance_chart", height = "250px")
                   )
                 )
