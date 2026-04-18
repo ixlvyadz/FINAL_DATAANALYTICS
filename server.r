@@ -150,6 +150,17 @@ function(input, output, session) {
       config(displayModeBar = FALSE, responsive = TRUE)
   })
 
+  # ── Display selected crop ──────────────────────────────────────────────────
+  output$selected_crop_display <- renderUI({
+    selected_crop <- if (!is.null(input$importance_crop) && nzchar(input$importance_crop)) {
+      tolower(input$importance_crop)
+    } else {
+      pred()$recommended
+    }
+    HTML(paste0("<small style='color: #6b7280; font-weight: 500;'>Showing: <strong>", 
+           tools::toTitleCase(selected_crop), "</strong></small>"))
+  })
+
   # ── Feature importance chart ───────────────────────────────────────────────
   output$importance_chart <- renderPlotly({
     selected_crop <- if (!is.null(input$importance_crop) && nzchar(input$importance_crop)) {

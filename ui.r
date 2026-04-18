@@ -270,6 +270,7 @@ shinyUI(
         body.dark-mode .card {
           background: #111827;
           box-shadow: 0 6px 20px rgba(2, 6, 23, 0.35);
+          border: 1px solid #4f7bf3;
         }
 
         body.dark-mode .col-span-4 > .card {
@@ -366,10 +367,12 @@ shinyUI(
 
         .output-layout .output-top3 {
           width: 100%;
+          display: flex;
         }
 
         .output-layout .output-importance {
           width: 100%;
+          display: flex;
         }
 
         .card {
@@ -401,6 +404,52 @@ shinyUI(
           font-size: 0.95rem;
           font-weight: 600;
           margin-bottom: 1rem;
+        }
+
+        .section-header {
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+          margin-bottom: 1rem;
+          gap: 1rem;
+        }
+
+        .card-with-dropdown .section-header .section-title {
+          margin-bottom: 0;
+          flex: 1;
+        }
+
+        .card-with-dropdown .crop-select-wrapper {
+          min-width: 150px;
+        }
+
+        .card-with-dropdown .crop-select-wrapper select {
+          width: 100%;
+          padding: 0.4rem 0.5rem;
+          font-size: 0.875rem;
+          border: 1px solid #d1d5db;
+          border-radius: 0.375rem;
+        }
+
+        .output-layout {
+          display: grid;
+          gap: 1.5rem;
+          align-items: stretch;
+        }
+
+        .output-top3 > .card,
+        .output-importance > .card {
+          display: flex;
+          flex-direction: column;
+          width: 100%;
+          height: 100%;
+          min-height: 540px;
+        }
+
+        .output-top3 > .card > div:last-child,
+        .output-importance > .card > div:last-child {
+          flex: 1;
+          min-height: 0;
         }
 
         .slider-row {
@@ -568,13 +617,6 @@ shinyUI(
           padding: 0 0.1rem;
         }
 
-        .probability-title {
-          text-align: center;
-          margin-bottom: 0.01rem;
-          font-size: 0.8rem;
-          color: #334155;
-          font-weight: 600;
-        }
 
         .gauge-wrap {
           position: relative;
@@ -816,7 +858,6 @@ shinyUI(
                     ),
                     div(
                       class = "recommend-probability",
-                      div(class = "probability-title", "Probability"),
                       div(
                         class = "gauge-wrap",
                         plotlyOutput("gauge_chart", width = "100%", height = "150px")
@@ -833,11 +874,12 @@ shinyUI(
               # Top 3 and Feature Importance
               div(
                 class = "output-layout",
-                style = "display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;",
+                style = "display: grid; grid-template-columns: 0.9fr 1.1fr; gap: 1rem;",
                 div(
                   class = "output-top3",
                   div(
                     class = "card",
+                    style = "display: flex; flex-direction: column;",
                     div(class = "section-title", "Top 3 Alternatives"),
                     plotlyOutput("top3_chart", height = "250px")
                   )
@@ -845,9 +887,16 @@ shinyUI(
                 div(
                   class = "output-importance",
                   div(
-                    class = "card",
-                    div(class = "section-title", "Feature Importance"),
-                    selectInput("importance_crop", "Select crop", choices = NULL, width = "100%"),
+                    class = "card card-with-dropdown",
+                    style = "display: flex; flex-direction: column;",
+                    div(
+                      class = "section-header",
+                      div(class = "section-title", "Feature Importance"),
+                      div(
+                        class = "crop-select-wrapper",
+                        selectInput("importance_crop", NULL, choices = NULL, width = "100%")
+                      )
+                    ),
                     plotlyOutput("importance_chart", height = "250px")
                   )
                 )
@@ -975,6 +1024,22 @@ shinyUI(
 
         $('#rain').on('input', function() {
           $('#rain-val').text(this.value);
+        });
+
+        // Toggle the feature-importance crop dropdown on repeated clicks
+        $(document).on('mousedown', '.card-with-dropdown .selectize-control.single .selectize-input', function(e) {
+          var control = this.closest('.selectize-control');
+          var selectize = control && (control.selectize || $(control)[0] && $(control)[0].selectize);
+
+          if (!selectize) {
+            return;
+          }
+
+          if ($(control).hasClass('dropdown-active') || selectize.isOpen) {
+            e.preventDefault();
+            e.stopPropagation();
+            selectize.close();
+          }
         });
 
       });
