@@ -65,18 +65,24 @@ ui <- dashboardPage(
         .main-header, .logo { display: none !important; }
         .content-wrapper {
           margin-top: var(--topbar-height) !important;
-          /* match deployed: content starts after collapsed rail with no extra gutter */
+          /* default: content starts after the collapsed sidebar rail */
           margin-left: var(--sidebar-collapsed) !important;
+          padding: 0 !important;
           padding-left: 0 !important;
           left: auto !important;
           transition: margin-left 0.25s ease, padding-left 0.25s ease;
-          position: static;
+          position: relative;
           z-index: 800;
         }
-        .main-sidebar:hover ~ .content-wrapper {
+
+        /* keep content gutters removed — no extra padding */
+        body:not(.sidebar-open) .content-wrapper { padding-left: 0 !important; padding-right: 0 !important; }
+
+        /* Use body state classes to reliably coordinate sidebar width and content offset
+           (hover-only selectors are brittle across layouts). JS toggles these classes. */
+        body.sidebar-hovered .content-wrapper,
+        body.sidebar-open .content-wrapper {
           margin-left: var(--sidebar-width) !important;
-          padding-left: 0 !important;
-          left: auto !important;
         }
 
         .content-wrapper > section.content {
@@ -94,10 +100,13 @@ ui <- dashboardPage(
           overflow-x: hidden;
           background: var(--cs-sidebar) !important;
           border-right: 1px solid rgba(51, 82, 65, 0.95);
-          transition: width 0.25s ease;
-          z-index: 100; /* lower stacking so pushed content can appear above */
+          transition: width 0.25s ease, left 0.25s ease;
+          z-index: 900;
         }
-        .main-sidebar:hover {
+
+        /* Sidebar expands when body indicates hovered/open state (controlled by JS). */
+        body.sidebar-hovered .main-sidebar,
+        body.sidebar-open .main-sidebar {
           width: var(--sidebar-width) !important;
         }
 
@@ -198,13 +207,15 @@ ui <- dashboardPage(
         }
 
         .modern-card {
-          background: var(--cs-card-bg);
-          border-radius: 12px;
-          border: 1px solid var(--cs-border);
+          background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,246,0.98));
+          border-radius: 14px;
+          border: 0; /* remove heavy border for modern look */
           margin-bottom: 18px;
-          box-shadow: 0 8px 22px rgba(64, 109, 79, 0.08);
+          box-shadow: 0 8px 28px rgba(16,24,32,0.08), 0 2px 6px rgba(16,24,32,0.04);
           overflow: hidden;
+          transition: transform 0.18s ease, box-shadow 0.18s ease;
         }
+        .modern-card:hover { transform: translateY(-4px); box-shadow: 0 18px 40px rgba(16,24,32,0.12); }
         .card-header {
           display: flex;
           align-items: center;
@@ -222,12 +233,14 @@ ui <- dashboardPage(
           display: flex;
           justify-content: space-between;
           align-items: center;
-          gap: 24px;
-          margin-bottom: 16px;
+          gap: 20px;
+          margin-bottom: 16px; /* reduced spacing to bring cards closer */
           flex-wrap: nowrap;
         }
-        .panel-title { min-width: 0; flex: 1 1 320px; }
-        .panel-filters-wrap { flex: 0 1 720px; margin-left: auto; }
+        .panel-title { min-width: 0; flex: 0 0 353px; }
+        .panel-title h2 { font-size: 30px; line-height: 33px; margin: 0; }
+        .panel-title p { margin: 0; font-size: 12px; line-height: 17px; }
+        .panel-filters-wrap { flex: 1 1 auto; margin-left: 0; }
         .panel-filters {
           display: flex;
           gap: 12px;
@@ -248,11 +261,18 @@ ui <- dashboardPage(
           min-width: 0;
           flex: 1.35 1 0;
         }
+        /* Filter inputs: target 170px width but remain responsive */
         .panel-filter-item {
-          width: 170px;
-          min-width: 0;
-          flex: 1 1 0;
+          width: 170px; /* desired measurement */
+          min-width: 120px;
+          max-width: 100%;
+          flex: 0 1 170px; /* prefer 170px but allow shrinking */
         }
+
+        /* Ensure selectize and inputs fill their container */
+        .panel-filter-item .shiny-input-container,
+        .panel-filter-item .selectize-control,
+        .panel-filter-item .selectize-input { width: 100% !important; box-sizing: border-box; }
 
         /* Match deployed slider theme globally (ion.rangeSlider used by Shiny sliderInput). */
         .irs--shiny .irs-line {
@@ -310,19 +330,53 @@ ui <- dashboardPage(
           background: #ecf1df;
         }
 
-        .stat-card { background: var(--cs-card-bg); border-radius: 12px; padding: 14px; border: 1px solid var(--cs-border); height: 110px; color: var(--cs-text-main); box-shadow: 0 6px 18px rgba(64,109,79,0.10); }
-        .resource-card { height: 110px; padding: 14px 14px 12px; display: flex; flex-direction: column; justify-content: flex-start; gap: 2px; }
-        .resource-grid { display: flex; justify-content: space-between; gap: 12px; margin-top: 0; }
+        /* Responsive tuning: keep layout cohesive across sidebar states and viewport sizes */
+        .content-wrapper { transition: margin-left 0.25s ease, padding 0.2s ease; }
+        .panel-controls, .panel-filters { transition: gap 0.2s ease, width 0.2s ease; }
+        .panel-filters { min-width: 0; }
+        .panel-filter-item { min-width: 0; flex-shrink: 1; }
+
+        @media (min-width: 1200px) {
+          .content-wrapper { padding: 0 !important; }
+          .panel-controls { gap: 24px; }
+          .panel-filters { gap: 12px; }
+          .summary-cards { gap: 16px; }
+          .panel-title { flex: 0 0 353px; }
+          .panel-filters-wrap { flex: 1 1 auto; }
+        }
+
+        @media (min-width: 1051px) and (max-width: 1199px) {
+          .content-wrapper { padding: 0 !important; }
+          .panel-controls { gap: 16px; }
+          .panel-filters { gap: 12px; }
+          .panel-title { flex: 0 0 300px; }
+          .panel-filters-wrap { flex: 1 1 auto; }
+        }
+
+        /* Keep desktop row layout until tablet breakpoint; stack below 768px */
+        @media (max-width: 1050px) {
+          .content-wrapper { padding: 0 !important; }
+          .panel-controls { flex-direction: column; gap: 12px; align-items: stretch; }
+          .panel-title, .panel-filters-wrap { width: 100%; flex: 1 1 auto; margin-left: 0; }
+          .panel-filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; justify-content: stretch; }
+          .panel-filter-item-year { grid-column: 1 / -1; width: 100%; }
+          .panel-filter-item { width: 100% !important; flex: 1 1 100% !important; }
+        }
+
+        .stat-card { background: linear-gradient(180deg, #ffffff, #fbfbf8); border-radius: 12px; padding: 18px; border: 0; height: 110px; color: var(--cs-text-main); box-shadow: 0 8px 22px rgba(10,20,12,0.06); display: block; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .stat-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(10,20,12,0.08); }
+        .resource-card { height: 110px; padding: 18px; display: block; }
+        .resource-grid { display: flex; justify-content: space-between; gap: 18px; margin-top: 0; }
         .resource-item { flex: 1; min-width: 0; text-align: center; }
         .resource-label { display: block; font-size: 10px; line-height: 1.2; color: var(--cs-text-main); opacity: 0.9; }
-        .stat-val { font-size: 20px; font-weight: 700; display: block; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .resource-stat { font-size: 18px; font-weight: 700; display: block; line-height: 1.1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .stat-val { font-size: 28px; font-weight: 800; display: block; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cs-green); }
+        .resource-stat { font-size: 20px; font-weight: 800; display: block; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cs-green); }
         .stat-lbl { font-size: 11px; text-transform: uppercase; color: var(--cs-text-main); font-weight: 600; margin: 0; }
-        .split-stat-card { display: block; }
+        .split-stat-card { }
         .split-stat-grid { display: flex; gap: 12px; align-items: flex-start; }
         .split-stat-box { flex: 1; text-align: left; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 
-        .weather-card { display: flex; flex-direction: column; gap: 4px; padding: 14px; height: 110px; }
+        .weather-card { display: block; padding: 18px; height: 110px; }
         .weather-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .weather-temp { font-size: 28px; font-weight: 700; line-height: 1; }
         .weather-desc { font-size: 13px; }
@@ -331,14 +385,25 @@ ui <- dashboardPage(
 
         .graph-card {
           overflow: hidden;
-          background: transparent;
-          border: 1px solid rgba(64, 109, 79, 0.16);
-          border-radius: 18px;
-          box-shadow: 0 16px 36px rgba(15, 23, 42, 0.08), 0 2px 8px rgba(64, 109, 79, 0.06);
+          background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(250,250,246,0.98));
+          border: 0;
+          border-radius: 14px;
+          box-shadow: 0 8px 28px rgba(16,24,32,0.08), 0 2px 6px rgba(16,24,32,0.04);
+          position: relative;
+          transition: box-shadow 0.18s ease;
         }
+        .graph-card::before {
+          content: "";
+          position: absolute;
+          inset: 0 0 auto 0;
+          height: 4px;
+          background: linear-gradient(90deg, #b9c85d 0%, #406d4f 55%, #10b981 100%);
+          border-radius: 14px 14px 0 0;
+        }
+        .graph-card:hover { box-shadow: 0 14px 40px rgba(16,24,32,0.10); }
         .graph-card .card-header {
           padding: 14px 18px;
-          border-bottom: 1px solid rgba(64, 109, 79, 0.1);
+          border-bottom: 1px solid rgba(64, 109, 79, 0.08);
         }
         .graph-body { padding: 14px; }
 
@@ -418,6 +483,8 @@ ui <- dashboardPage(
         }
 
         @media (max-width: 768px) {
+          /* ensure no content gutters on small screens */
+          .content-wrapper { padding: 0 !important; }
           header.main-header,
           .main-header,
           .skin-black .main-header,
@@ -459,6 +526,10 @@ ui <- dashboardPage(
           .summary-cards .stat-card,
           .summary-cards .resource-card,
           .summary-cards .weather-card { min-height: 96px; padding: 12px; height: auto; }
+          /* add vertical spacing when cards stack on small screens */
+          .summary-cards .stat-card,
+          .summary-cards .resource-card,
+          .summary-cards .weather-card { margin-top: 14px; margin-bottom: 16px; }
           .summary-cards .split-stat-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
           .summary-cards .resource-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
           .summary-cards .resource-label { font-size: 9px; }
@@ -472,6 +543,100 @@ ui <- dashboardPage(
           .glossary-side-panel { width: 100%; transform: translateX(100%); }
         }
       '))),
+      tags$script(HTML('
+        (function() {
+          function setDarkMode(enabled) {
+            document.body.classList.toggle("dark-mode", enabled);
+            localStorage.setItem("cropsense-dark-mode", enabled ? "1" : "0");
+          }
+
+          function setGlossaryOpen(enabled) {
+            var panel = document.getElementById("glossary_panel");
+            if (!panel) return;
+            panel.classList.toggle("open", enabled);
+          }
+
+          function initControls() {
+            var darkButton = document.getElementById("dark_toggle_top");
+            var glossaryButton = document.getElementById("glossary_toggle");
+            var glossaryClose = document.getElementById("glossary_panel_close");
+
+            if (darkButton && !darkButton.dataset.bound) {
+              darkButton.dataset.bound = "1";
+              darkButton.addEventListener("click", function() {
+                setDarkMode(!document.body.classList.contains("dark-mode"));
+              });
+            }
+
+            if (glossaryButton && !glossaryButton.dataset.bound) {
+              glossaryButton.dataset.bound = "1";
+              glossaryButton.addEventListener("click", function() {
+                var panel = document.getElementById("glossary_panel");
+                setGlossaryOpen(!(panel && panel.classList.contains("open")));
+              });
+            }
+
+            if (glossaryClose && !glossaryClose.dataset.bound) {
+              glossaryClose.dataset.bound = "1";
+              glossaryClose.addEventListener("click", function() {
+                setGlossaryOpen(false);
+              });
+            }
+
+            var storedDark = localStorage.getItem("cropsense-dark-mode") === "1";
+            setDarkMode(storedDark);
+          }
+
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", initControls);
+          } else {
+            initControls();
+          }
+          document.addEventListener("shiny:connected", initControls);
+          
+          // Sidebar hover/open coordination: add small helpers to keep content from overlapping.
+          function bindSidebarInteractions() {
+            var body = document.body;
+            var sidebar = document.querySelector(".main-sidebar");
+            var collapseBtn = document.getElementById("collapse_btn");
+            var backdrop = document.getElementById("sidebar_backdrop");
+
+            if (sidebar && !sidebar.dataset.bound) {
+              sidebar.dataset.bound = "1";
+              sidebar.addEventListener("mouseenter", function() { body.classList.add("sidebar-hovered"); });
+              sidebar.addEventListener("mouseleave", function() { body.classList.remove("sidebar-hovered"); });
+            }
+
+            if (collapseBtn && !collapseBtn.dataset.bound) {
+              collapseBtn.dataset.bound = "1";
+              collapseBtn.addEventListener("click", function(e) {
+                e.preventDefault();
+                // Toggle the persistent open state (useful for keyboard users).
+                if (document.body.classList.contains("sidebar-open")) {
+                  document.body.classList.remove("sidebar-open");
+                } else {
+                  document.body.classList.add("sidebar-open");
+                }
+              });
+            }
+
+            if (backdrop && !backdrop.dataset.bound) {
+              backdrop.dataset.bound = "1";
+              backdrop.addEventListener("click", function() {
+                document.body.classList.remove("sidebar-open");
+              });
+            }
+          }
+
+          // Ensure the interactions are bound after DOM ready and when Shiny reconnects.
+          if (document.readyState === "loading") {
+            document.addEventListener("DOMContentLoaded", bindSidebarInteractions);
+          } else {
+            bindSidebarInteractions();
+          }
+          document.addEventListener("shiny:connected", bindSidebarInteractions);
+        })();
+      ')),
 
     div(class = "top-nav",
       div(class = "brand",
@@ -562,7 +727,7 @@ ui <- dashboardPage(
             )
           )
         ),
-        br(),
+        
         fluidRow(class = "summary-cards",
           column(4,
             div(class = "stat-card split-stat-card",

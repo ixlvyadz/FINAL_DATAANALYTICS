@@ -4,6 +4,19 @@ library(dplyr)
 library(jsonlite)
 library(randomForest)
 
+utils::globalVariables(c(
+  'Location', 'Crops', 'yeilds', 'Temperature', 'Year', 'State', 'Crop', 'Season',
+  'Yield', 'Area', 'Val', 'AvgY', 'PrevYear', 'Delta', 'prob', 'N', 'P', 'K',
+  'temperature', 'humidity', 'ph', 'rainfall', 'price', 'Humidity', 'Rainfall',
+  'Temperature', 'State_Name', 'Prod', 'Temp', 'DeltaLabel', 'Crop_Year'
+))
+
+clean_season_data <- function(path) {
+  read.csv(path, stringsAsFactors = FALSE, na.strings = c('', 'NA'), check.names = FALSE) %>%
+    mutate(across(where(is.character), ~ trimws(.x))) %>%
+    mutate(across(where(is.character), ~ na_if(.x, '')))
+}
+
 
 # Load ML model if present
 model_rf <- NULL
@@ -12,6 +25,130 @@ if (file.exists('model_rf.RDS')) {
 }
 
 server <- function(input, output, session) {
+  output$stat_corr <- renderPlotly({
+    corr_source <- tryCatch({
+      clean_season_data('data_season.csv')
+    }, error = function(e) NULL)
+
+    if (is.null(corr_source)) {
+      return(plot_ly() %>% layout(
+        paper_bgcolor = 'rgba(0,0,0,0)',
+        plot_bgcolor = 'rgba(0,0,0,0)',
+        xaxis = list(visible = FALSE),
+        yaxis = list(visible = FALSE),
+        annotations = list(list(
+          text = 'Correlation data unavailable',
+          x = 0.5, y = 0.5, xref = 'paper', yref = 'paper',
+          showarrow = FALSE,
+          font = list(color = '#66785b', size = 14)
+        ))
+      ) %>% config(displayModeBar = FALSE))
+    }
+
+    corr_fields <- c('Area', 'Rainfall', 'Temperature', 'yeilds', 'Humidity')
+
+    corr_source <- corr_source %>%
+      filter(if_all(all_of(corr_fields), ~ !is.na(.x))) %>%
+      transmute(
+        Area = as.numeric(.data$Area),
+        Rainfall = as.numeric(.data$Rainfall),
+        Temperature = as.numeric(.data$Temperature),
+        Yield = as.numeric(.data$yeilds),
+        Humidity = as.numeric(.data$Humidity)
+      )
+
+    corr_mat <- cor(corr_source, use = 'pairwise.complete.obs')
+    # Compute per-pair correlation, p-value, and sample count
+    compute_corr_stats <- function(df) {
+      m <- as.matrix(df)
+      vars <- colnames(m)
+      nvar <- length(vars)
+      r_mat <- matrix(NA_real_, nvar, nvar, dimnames = list(vars, vars))
+      p_mat <- matrix(NA_real_, nvar, nvar, dimnames = list(vars, vars))
+      n_mat <- matrix(0L, nvar, nvar, dimnames = list(vars, vars))
+      for (i in seq_len(nvar)) {
+        for (j in seq_len(nvar)) {
+          xi <- m[, i]; xj <- m[, j]
+          ok <- stats::complete.cases(xi, xj)
+          n_mat[i, j] <- sum(ok)
+          if (n_mat[i, j] < 3) next
+          ct <- tryCatch(cor.test(xi[ok], xj[ok], method = 'pearson'), error = function(e) NULL)
+          if (!is.null(ct)) {
+            r_mat[i, j] <- as.numeric(ct$estimate)
+            p_mat[i, j] <- as.numeric(ct$p.value)
+          }
+        }
+      }
+      list(r = r_mat, p = p_mat, n = n_mat)
+    }
+
+    corr_stats <- compute_corr_stats(corr_source)
+    corr_mat <- corr_stats$r
+    p_mat <- corr_stats$p
+    n_mat <- corr_stats$n
+
+    corr_df <- as.data.frame(as.table(corr_mat), stringsAsFactors = FALSE)
+    names(corr_df) <- c('Factor_X', 'Factor_Y', 'Correlation')
+    # attach p-value and sample count for hover/annotation
+    p_df <- as.data.frame(as.table(p_mat), stringsAsFactors = FALSE)
+    names(p_df) <- c('Factor_X', 'Factor_Y', 'P')
+    n_df <- as.data.frame(as.table(n_mat), stringsAsFactors = FALSE)
+    names(n_df) <- c('Factor_X', 'Factor_Y', 'N')
+    corr_df$P <- p_df$P
+    corr_df$N <- n_df$N
+    factor_levels <- colnames(corr_mat)
+    corr_df$Factor_X <- factor(corr_df$Factor_X, levels = factor_levels)
+    corr_df$Factor_Y <- factor(corr_df$Factor_Y, levels = rev(factor_levels))
+
+    plot_ly(
+      corr_df,
+      x = ~Factor_X,
+      y = ~Factor_Y,
+      z = ~Correlation,
+      text = ~paste0('n=', N, '<br>p=', sprintf('%.3g', P)),
+      type = 'heatmap',
+      colorscale = list(
+        c(0, '#d73027'),
+        c(0.5, '#fff7b0'),
+        c(1, '#1a9850')
+      ),
+      zmin = -1,
+      zmax = 1,
+      colorbar = list(title = 'r', titleside = 'right', tickvals = c(-1, 0, 1), ticktext = c('-1','0','1'), thickness = 16),
+      hovertemplate = paste0(
+        '<b>%{x} vs %{y}</b><br>',
+        'Correlation: %{z:.2f}<br>',
+        '%{text}<extra></extra>'
+      )
+    ) %>%
+      layout(
+        margin = list(l = 38, r = 18, t = 10, b = 26),
+        paper_bgcolor = 'rgba(0,0,0,0)',
+        plot_bgcolor = 'rgba(0,0,0,0)',
+        coloraxis = list(colorscale = list(
+          c(0, '#d73027'),
+          c(0.5, '#f7f7f7'),
+          c(1, '#1a9850')
+        )),
+        xaxis = list(
+          title = 'Correlation',
+          side = 'bottom',
+          tickangle = 0,
+          tickfont = list(size = 11, color = '#26402f'),
+          showgrid = FALSE,
+          zeroline = FALSE,
+          titlefont = list(size = 12, color = '#26402f')
+        ),
+        yaxis = list(
+          title = '',
+          tickfont = list(size = 11, color = '#26402f'),
+          showgrid = FALSE,
+          zeroline = FALSE,
+          autorange = 'reversed'
+        )
+      ) %>%
+      config(displayModeBar = FALSE, responsive = TRUE)
+  })
   weather_code_label <- function(code) {
     switch(as.character(code),
       "0" = "Clear sky",

@@ -4,6 +4,12 @@
 library(dplyr)
 library(tidyr)
 
+clean_season_data <- function(path) {
+	read.csv(path, stringsAsFactors = FALSE, na.strings = c('', 'NA'), check.names = FALSE) %>%
+		mutate(across(where(is.character), ~ trimws(.x))) %>%
+		mutate(across(where(is.character), ~ na_if(.x, '')))
+}
+
 cat("\n========================================\n")
 cat("DATA QUALITY REPORT\n")
 cat("========================================\n\n")
@@ -61,9 +67,10 @@ print(head(crop_prod[, c("State_Name", "Crop_Year", "Crop", "Area", "Production"
 
 cat("\n\n2. SEASONAL DATA (data_season.csv)\n")
 cat("------------------------------------------\n")
-data_season <- read.csv('data_season.csv', stringsAsFactors = FALSE)
+data_season <- clean_season_data('data_season.csv')
 
-cat(sprintf("Total rows: %d\n", nrow(data_season)))
+cat(sprintf("CSV lines (including header): %d\n", length(readLines('data_season.csv', warn = FALSE))))
+cat(sprintf("Data rows: %d\n", nrow(data_season)))
 cat(sprintf("Columns: %s\n", paste(names(data_season), collapse = ", ")))
 
 locations <- unique(data_season$Location)
@@ -71,6 +78,12 @@ cat(sprintf("\nUnique Locations: %d\n", length(locations)))
 cat(sprintf("Locations: %s\n", paste(head(locations, 10), collapse = ", ")))
 
 cat(sprintf("\nYear Range: %d - %d\n", min(data_season$Year), max(data_season$Year)))
+cat(sprintf("Rows with any missing value: %d\n", sum(!complete.cases(data_season))))
+cat(sprintf("Missing values by column: %s\n", paste(sprintf('%s=%d', names(colSums(is.na(data_season))), colSums(is.na(data_season))), collapse = ', ')))
+
+correlation_fields <- c('Area', 'Rainfall', 'Temperature', 'yeilds', 'Humidity')
+correlation_ready <- data_season[complete.cases(data_season[, correlation_fields]), correlation_fields]
+cat(sprintf("Correlation-ready rows: %d\n", nrow(correlation_ready)))
 
 cat("\n\n3. CROP YIELD DATA (crop_yield.csv)\n")
 cat("------------------------------------------\n")
