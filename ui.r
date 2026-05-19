@@ -51,9 +51,15 @@ ui <- dashboardPage(
         }
 
         * { box-sizing: border-box; font-family: "Poppins", sans-serif !important; }
+        html, body { overflow-x: hidden; }
         body, .content-wrapper { background: var(--cs-bg); color: var(--cs-text-main); }
         html, body, .wrapper { margin: 0; padding: 0; }
-        .wrapper { overflow: visible; }
+        .wrapper { overflow: visible; background: var(--cs-bg); }
+        .skin-black .wrapper,
+        .skin-black .right-side,
+        .skin-black .content-wrapper {
+          background: var(--cs-bg) !important;
+        }
 
         /* Keep the header anchored at the viewport top and paint it in the same green context.
            This removes the thin dark strip seen above the header during sidebar state changes. */
@@ -70,7 +76,9 @@ ui <- dashboardPage(
           padding: 0 !important;
           padding-left: 0 !important;
           left: auto !important;
-          transition: margin-left 0.25s ease, padding-left 0.25s ease;
+          transition: margin-left 0.3s ease;
+          /* allow animated children to overflow slightly during transforms */
+          overflow: visible;
           position: relative;
           z-index: 800;
         }
@@ -97,10 +105,12 @@ ui <- dashboardPage(
           top: var(--topbar-height);
           height: calc(100vh - var(--topbar-height));
           overflow-y: auto;
-          overflow-x: hidden;
+          /* allow horizontal children (labels) to animate without being clipped */
+          overflow-x: visible;
           background: var(--cs-sidebar) !important;
           border-right: 1px solid rgba(51, 82, 65, 0.95);
-          transition: width 0.25s ease, left 0.25s ease;
+          transition: width 0.3s ease;
+          will-change: width, transform;
           z-index: 900;
         }
 
@@ -110,7 +120,9 @@ ui <- dashboardPage(
           width: var(--sidebar-width) !important;
         }
 
-        .sidebar-menu { padding-top: 0; margin-top: 0; }
+        /* position menu items at top of sidebar (just below top nav) */
+        .main-sidebar { padding-top: 8px !important; }
+        .sidebar-menu { padding-top: 4px; margin-top: 4px; }
         .sidebar-menu > li > a {
           display: flex;
           align-items: center;
@@ -129,6 +141,8 @@ ui <- dashboardPage(
           opacity: 0;
           transform: translateX(-6px);
           transition: opacity 0.18s ease, transform 0.18s ease;
+          will-change: opacity, transform;
+          backface-visibility: hidden;
           white-space: nowrap;
         }
         .main-sidebar:hover .menu-label-text,
@@ -237,7 +251,7 @@ ui <- dashboardPage(
           margin-bottom: 16px; /* reduced spacing to bring cards closer */
           flex-wrap: nowrap;
         }
-        .panel-title { min-width: 0; flex: 0 0 353px; }
+        .panel-title { min-width: 0; flex: 1 1 320px; }
         .panel-title h2 { font-size: 30px; line-height: 33px; margin: 0; }
         .panel-title p { margin: 0; font-size: 12px; line-height: 17px; }
         .panel-filters-wrap { flex: 1 1 auto; margin-left: 0; }
@@ -256,6 +270,7 @@ ui <- dashboardPage(
           min-width: 0;
           margin-bottom: 0;
         }
+
         .panel-filter-item-year {
           width: min(280px, 100%);
           min-width: 0;
@@ -273,6 +288,49 @@ ui <- dashboardPage(
         .panel-filter-item .shiny-input-container,
         .panel-filter-item .selectize-control,
         .panel-filter-item .selectize-input { width: 100% !important; box-sizing: border-box; }
+
+        /* When sidebar expands on desktop, keep title + filters in one row without overflow. */
+        @media (min-width: 1051px) {
+          body.sidebar-hovered .panel-controls,
+          body.sidebar-open .panel-controls {
+            flex-wrap: nowrap;
+            align-items: center;
+            gap: 10px;
+          }
+
+          body.sidebar-hovered .panel-title,
+          body.sidebar-open .panel-title {
+            flex: 1 1 220px;
+            min-width: 0;
+          }
+
+          body.sidebar-hovered .panel-filters-wrap,
+          body.sidebar-open .panel-filters-wrap {
+            flex: 1 1 auto;
+            min-width: 0;
+          }
+
+          body.sidebar-hovered .panel-filters,
+          body.sidebar-open .panel-filters {
+            flex-wrap: nowrap;
+            justify-content: flex-end;
+            gap: 8px;
+          }
+
+          body.sidebar-hovered .panel-filter-item-year,
+          body.sidebar-open .panel-filter-item-year {
+            width: 220px;
+            min-width: 180px;
+            flex: 1 1 220px;
+          }
+
+          body.sidebar-hovered .panel-filter-item,
+          body.sidebar-open .panel-filter-item {
+            width: 150px;
+            min-width: 130px;
+            flex: 0 1 150px;
+          }
+        }
 
         /* Match deployed slider theme globally (ion.rangeSlider used by Shiny sliderInput). */
         .irs--shiny .irs-line {
@@ -331,8 +389,8 @@ ui <- dashboardPage(
         }
 
         /* Responsive tuning: keep layout cohesive across sidebar states and viewport sizes */
-        .content-wrapper { transition: margin-left 0.25s ease, padding 0.2s ease; }
-        .panel-controls, .panel-filters { transition: gap 0.2s ease, width 0.2s ease; }
+        .content-wrapper { transition: margin-left 0.3s ease; }
+        .panel-controls, .panel-filters { transition: opacity 0.18s ease, transform 0.18s ease; will-change: opacity, transform; }
         .panel-filters { min-width: 0; }
         .panel-filter-item { min-width: 0; flex-shrink: 1; }
 
@@ -341,7 +399,7 @@ ui <- dashboardPage(
           .panel-controls { gap: 24px; }
           .panel-filters { gap: 12px; }
           .summary-cards { gap: 16px; }
-          .panel-title { flex: 0 0 353px; }
+          .panel-title { flex: 1 1 320px; transition: transform 0.18s ease, opacity 0.18s ease; will-change: transform, opacity; }
           .panel-filters-wrap { flex: 1 1 auto; }
         }
 
@@ -349,7 +407,7 @@ ui <- dashboardPage(
           .content-wrapper { padding: 0 !important; }
           .panel-controls { gap: 16px; }
           .panel-filters { gap: 12px; }
-          .panel-title { flex: 0 0 300px; }
+          .panel-title { flex: 1 1 300px; }
           .panel-filters-wrap { flex: 1 1 auto; }
         }
 
@@ -363,20 +421,20 @@ ui <- dashboardPage(
           .panel-filter-item { width: 100% !important; flex: 1 1 100% !important; }
         }
 
-        .stat-card { background: linear-gradient(180deg, #ffffff, #fbfbf8); border-radius: 12px; padding: 18px; border: 0; height: 110px; color: var(--cs-text-main); box-shadow: 0 8px 22px rgba(10,20,12,0.06); display: block; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .stat-card { background: linear-gradient(180deg, #ffffff, #fbfbf8); border-radius: 12px; padding: 18px; border: 0; height: 110px; color: var(--cs-text-main); box-shadow: 0 8px 22px rgba(10,20,12,0.06); display:flex; flex-direction:column; justify-content:center; transition: transform 0.18s ease, box-shadow 0.18s ease; }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(10,20,12,0.08); }
-        .resource-card { height: 110px; padding: 18px; display: block; }
+        .resource-card { height: 110px; padding: 18px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
         .resource-grid { display: flex; justify-content: space-between; gap: 18px; margin-top: 0; }
         .resource-item { flex: 1; min-width: 0; text-align: center; }
         .resource-label { display: block; font-size: 10px; line-height: 1.2; color: var(--cs-text-main); opacity: 0.9; }
         .stat-val { font-size: 28px; font-weight: 800; display: block; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cs-green); }
         .resource-stat { font-size: 20px; font-weight: 800; display: block; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cs-green); }
         .stat-lbl { font-size: 11px; text-transform: uppercase; color: var(--cs-text-main); font-weight: 600; margin: 0; }
-        .split-stat-card { }
+        .split-stat-card { display: flex; flex-direction: column; justify-content: center; }
         .split-stat-grid { display: flex; gap: 12px; align-items: flex-start; }
         .split-stat-box { flex: 1; text-align: left; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 
-        .weather-card { display: block; padding: 18px; height: 110px; }
+        .weather-card { display: flex; flex-direction: column; gap: 4px; padding: 18px; height: 110px; justify-content: center; }
         .weather-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .weather-temp { font-size: 28px; font-weight: 700; line-height: 1; }
         .weather-desc { font-size: 13px; }
@@ -841,8 +899,7 @@ ui <- dashboardPage(
                 sliderInput("input_rain", "Rainfall (mm)", min = 0, max = 500, value = 200, step = 0.1, width = '100%')
               )
             ),
-            br(),
-            actionButton("predict_btn", "Get Crop Recommendation", class = "btn btn-success", style = "width:100%; padding:12px; font-weight:700; font-size:16px; border-radius:8px; background:#10b981; border:none; color:#fff;")
+            br()
           ),
           column(8,
             div(class = "modern-card",
@@ -866,7 +923,7 @@ ui <- dashboardPage(
             ),
             br(),
             fluidRow(
-              column(6,
+              column(12,
                 div(class = 'modern-card',
                   div(class = 'card-header', icon('chart-area'), 'Soil Profile vs Ideal Requirements'),
                   div(style = 'padding:12px;', plotlyOutput('pred_radar', height = '300px'))
