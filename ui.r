@@ -135,6 +135,19 @@ ui <- dashboardPage(
         .dark-mode .js-plotly-plot .bg {
           fill: transparent !important;
         }
+        .js-plotly-plot .xtick text,
+        .js-plotly-plot .ytick text,
+        .js-plotly-plot .gtitle,
+        .js-plotly-plot .legend text,
+        .js-plotly-plot .annotation text,
+        .js-plotly-plot .infolayer text,
+        .js-plotly-plot .colorbar text,
+        .js-plotly-plot .xtitle,
+        .js-plotly-plot .ytitle,
+        .js-plotly-plot .polar text {
+          fill: #2b4027 !important;
+          color: #2b4027 !important;
+        }
 
         .fa,
         .fa-brands,
@@ -229,7 +242,7 @@ ui <- dashboardPage(
         /* position menu items at top of sidebar (just below top nav) */
         .main-sidebar { padding-top: 10px !important; }
         .sidebar-menu { padding-top: 6px; margin-top: 4px; padding-left: 0; padding-right: 0; }
-        .sidebar-menu > li { margin: 0 8px 6px 8px; }
+        .sidebar-menu > li { margin: 4px 8px 6px 8px; }
         .sidebar-menu > li > a {
           display: flex;
           align-items: center;
@@ -370,9 +383,9 @@ ui <- dashboardPage(
           backdrop-filter: blur(10px);
           box-shadow: 10px 0 28px rgba(2, 6, 23, 0.12);
         }
-        .top-nav .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
-        .topbar-leaf-icon { display: inline-block; font-size: 20px; line-height: 1; color: #eef7df; }
-        .topbar-logo-text { font-size: 14px; font-weight: 700; letter-spacing: 0.2px; }
+        .top-nav .brand { display: flex; align-items: center; gap: 12px; cursor: pointer; user-select: none; }
+        .topbar-leaf-icon { display: inline-block; font-size: 24px; line-height: 1; color: #eef7df; }
+        .topbar-logo-text { font-size: 18px; font-weight: 800; letter-spacing: 0.3px; }
         .top-nav button#sidebar_toggle_top,
         .top-nav button#dark_toggle_top,
         .top-nav button#glossary_toggle {
@@ -490,6 +503,35 @@ ui <- dashboardPage(
         .panel-filter-item .shiny-input-container,
         .panel-filter-item .selectize-control,
         .panel-filter-item .selectize-input { width: 100% !important; box-sizing: border-box; }
+
+        /* Layer filters above cards but keep them below the top-nav.
+           panel-controls stays lower than the top-nav (1200) so it does not
+           overlap the header when scrolling. Dropdowns themselves sit above
+           cards but below the top-nav. */
+        .panel-controls, .panel-filters, .panel-filters-wrap {
+          position: relative !important;
+          z-index: 1100 !important; /* below top-nav (1200) */
+          overflow: visible !important;
+        }
+
+        /* Anchor selectize dropdowns to the filters area and keep them on top */
+        .selectize-control .selectize-dropdown,
+        .selectize-dropdown {
+          position: absolute !important;
+          z-index: 1150 !important; /* above cards (100) but below top-nav (1200) */
+          background: var(--cs-card-bg);
+          border: 1px solid var(--cs-border);
+          border-radius: 8px;
+          box-shadow: 0 10px 30px rgba(2,6,23,0.18);
+          max-height: 320px;
+          overflow: auto;
+        }
+
+        /* Ensure the select input sits above the card but below its dropdown */
+        .selectize-control.single .selectize-input { position: relative; z-index: 1140; }
+
+        /* Make sure cards do not create higher stacking contexts */
+        .graph-card, .modern-card { z-index: 100 !important; }
 
         /* When sidebar expands on desktop, keep title + filters in one row without overflow. */
         @media (min-width: 1051px) {
@@ -1072,7 +1114,7 @@ ui <- dashboardPage(
         fluidRow(
           column(6,
             div(class = "modern-card graph-card",
-              div(class = "card-header", icon("map"), "Production / Seasonal",
+              div(class = "card-header", icon("map"), "Production & Seasonality",
                 div(class = "card-header-controls",
                   selectInput("combined_chart_select", NULL, choices = c("Production by Location", "Seasonal Distribution"), selected = "Production by Location", width = "220px")
                 )
@@ -1082,7 +1124,7 @@ ui <- dashboardPage(
           ),
           column(6,
             div(id = "efficiency-card", class = "modern-card graph-card", style = "position:relative;",
-              div(class = "card-header", icon("bolt"), "Efficiency Analysis",
+              div(class = "card-header", icon("bolt"), "Crop Efficiency",
                 div(class = "card-header-controls",
                   selectInput("efficiency_var_select", NULL, choices = c("Crop Distribution", "Soil Type", "Temperature"), selected = "Crop Distribution", width = "220px")
                 )
@@ -1098,7 +1140,7 @@ ui <- dashboardPage(
         fluidRow(
           column(12,
             div(class = "modern-card graph-card",
-              div(class = "card-header", icon("chart-line"), "Yield Trends"),
+              div(class = "card-header", icon("chart-line"), "Yield Trends Over Time"),
               div(class = "graph-body", plotlyOutput("trend_plot", height = "400px"))
             )
           )
@@ -1106,7 +1148,7 @@ ui <- dashboardPage(
         fluidRow(
           column(12,
             div(class = "modern-card graph-card",
-              div(class = "card-header", icon("project-diagram"), "Factor Correlation"),
+              div(class = "card-header", icon("project-diagram"), "Crop Factor Correlation"),
               div(class = "graph-body", plotlyOutput("stat_corr", height = "360px"))
             )
           )
@@ -1120,7 +1162,7 @@ ui <- dashboardPage(
         fluidRow(
           column(4,
             div(class = "modern-card",
-              div(class = "card-header", icon("flask"), "Soil Nutrients (NPK) & pH"),
+                  div(class = "card-header", icon("flask"), "Soil Nutrients & pH"),
               div(style = "padding:12px;",
                 sliderInput("input_n", "Nitrogen (N)", min = 0, max = 150, value = 80, step = 1, width = '100%'),
                 tags$div(style = 'display:flex; gap:10px; margin-top:6px;',
@@ -1132,7 +1174,7 @@ ui <- dashboardPage(
             ),
             br(),
             div(class = "modern-card",
-              div(class = "card-header", icon("thermometer-half"), "Climate Conditions"),
+                  div(class = "card-header", icon("thermometer-half"), "Climate Conditions & Weather"),
               div(style = "padding:12px;",
                 sliderInput("input_temp", "Temperature (°C)", min = -10, max = 50, value = 25, step = 0.1, width = '100%'),
                 sliderInput("input_hum", "Humidity (%)", min = 0, max = 100, value = 80, step = 0.1, width = '100%'),

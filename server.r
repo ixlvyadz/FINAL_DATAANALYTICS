@@ -22,7 +22,7 @@ theme_dark_plot <- function(p) {
     p,
     paper_bgcolor = 'rgba(0,0,0,0)',
     plot_bgcolor = 'rgba(0,0,0,0)',
-    font = list(color = '#eff7bf')
+    font = list(color = '#2b4027')
   )
 }
 
@@ -503,9 +503,9 @@ server <- function(input, output, session) {
     plot_ly(type = 'scatterpolar', r = ideal, theta = cats, fill = 'toself', name = 'Ideal Profile') %>%
       add_trace(r = vals, theta = cats, fill = 'toself', name = 'Your Soil') %>%
       layout(
-        polar = list(radialaxis = list(visible = TRUE, range = c(0,1), tickfont = list(color = '#eff7bf'))),
+        polar = list(radialaxis = list(visible = TRUE, range = c(0,1), tickfont = list(color = '#2b4027'))),
         showlegend = TRUE,
-        legend = list(font = list(color = '#eff7bf'))
+        legend = list(font = list(color = '#2b4027'))
       ) %>%
       theme_dark_plot()
   })
