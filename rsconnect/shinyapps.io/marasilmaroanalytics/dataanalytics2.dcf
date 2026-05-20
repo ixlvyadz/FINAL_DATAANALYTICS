@@ -5,6 +5,6 @@ account: marasilmaroanalytics
 server: shinyapps.io
 hostUrl: https://api.shinyapps.io/v1
 appId: 17353770
-bundleId: 12002511
+bundleId: 12017960
 url: https://marasilmaroanalytics.shinyapps.io/dataanalytics2/
 version: 1

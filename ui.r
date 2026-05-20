@@ -13,12 +13,6 @@ ui <- dashboardPage(
       menuItem(HTML('<span class="menu-emoji">📊</span><span class="menu-label-text">Dashboard</span>'), tabName = "dashboard"),
       menuItem(HTML('<span class="menu-emoji">📈</span><span class="menu-label-text">Prediction</span>'), tabName = "prediction"),
       menuItem(HTML('<span class="menu-emoji">ℹ</span><span class="menu-label-text">About</span>'), tabName = "about")
-    ),
-    div(class = "sidebar-bottom-controls",
-      div(class = "sidebar-bottom-item", id = "collapse_btn",
-        span("☰", class = "menu-emoji"),
-        span("Toggle Menu", class = "ctrl-text")
-      )
     )
   ),
 
@@ -33,6 +27,8 @@ ui <- dashboardPage(
           --cs-card-bg: #ffffff;
           --cs-green: #406d4f;
           --cs-sidebar: #406d4f;
+          /* RGB components for translucent/blurred header using glassmorphism */
+          --cs-sidebar-rgb: 64, 109, 79;
           --cs-text-main: #26402f;
           --cs-text-sub: #66785b;
           --cs-border: #d8d1a0;
@@ -114,11 +110,6 @@ ui <- dashboardPage(
           z-index: 900;
         }
 
-        /* Sidebar expands when body indicates hovered/open state (controlled by JS). */
-        body.sidebar-hovered .main-sidebar,
-        body.sidebar-open .main-sidebar {
-          width: var(--sidebar-width) !important;
-        }
 
         /* position menu items at top of sidebar (just below top nav) */
         .main-sidebar { padding-top: 8px !important; }
@@ -145,8 +136,23 @@ ui <- dashboardPage(
           backface-visibility: hidden;
           white-space: nowrap;
         }
-        .main-sidebar:hover .menu-label-text,
-        .main-sidebar:hover .ctrl-text { opacity: 1; transform: translateX(0); margin-left: 10px; }
+        /* Desktop-only hover/expanded behaviors. On small screens the toggle controls expansion. */
+        @media (min-width: 769px) {
+          /* Sidebar expands when body indicates hovered/open state (controlled by JS). */
+          body.sidebar-hovered .main-sidebar,
+          body.sidebar-open .main-sidebar {
+            width: var(--sidebar-width) !important;
+          }
+
+          .main-sidebar:hover .menu-label-text,
+          .main-sidebar:hover .ctrl-text { opacity: 1; transform: translateX(0); margin-left: 10px; }
+          .sidebar-open .menu-label-text,
+          .sidebar-open .ctrl-text { opacity: 1; transform: translateX(0); margin-left: 10px; }
+        }
+
+        /* Mobile: allow labels only when the mobile toggle opens the sidebar */
+        .sidebar-mobile-open .menu-label-text,
+        .sidebar-mobile-open .ctrl-text { opacity: 1; transform: translateX(0); margin-left: 10px; }
 
         .sidebar-bottom-controls {
           position: absolute;
@@ -177,10 +183,12 @@ ui <- dashboardPage(
           justify-content: space-between;
           height: var(--topbar-height);
           padding: 12px 16px 12px 12px;
-          background: rgba(64, 109, 79, 0.78);
+          /* glassmorphism: translucent version of sidebar color with blur */
+          background: rgba(var(--cs-sidebar-rgb), 0.92) !important;
           color: #eff7bf;
-          border-bottom: 1px solid rgba(51, 82, 65, 0.9);
+          border-bottom: 1px solid rgba(51, 82, 65, 0.95);
           backdrop-filter: blur(12px);
+          box-shadow: 0 6px 20px rgba(2,6,23,0.12);
         }
         .top-nav .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
         .topbar-leaf-icon { display: inline-block; font-size: 20px; line-height: 1; color: #eff7bf; }
@@ -202,6 +210,10 @@ ui <- dashboardPage(
           cursor: pointer;
         }
         .top-nav button#sidebar_toggle_top { display: none; }
+        /* show the top sidebar toggle on mobile */
+        @media (max-width: 768px) {
+          .top-nav button#sidebar_toggle_top { display: flex !important; }
+        }
         .sidebar-backdrop {
           display: none;
           position: fixed;
@@ -423,14 +435,14 @@ ui <- dashboardPage(
 
         .stat-card { background: linear-gradient(180deg, #ffffff, #fbfbf8); border-radius: 12px; padding: 18px; border: 0; height: 110px; color: var(--cs-text-main); box-shadow: 0 8px 22px rgba(10,20,12,0.06); display:flex; flex-direction:column; justify-content:center; transition: transform 0.18s ease, box-shadow 0.18s ease; }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(10,20,12,0.08); }
-        .resource-card { height: 110px; padding: 18px; display: flex; flex-direction: column; justify-content: center; gap: 6px; }
+        .resource-card { height: 110px; padding: 18px; display: flex; flex-direction: column; justify-content: flex-start; gap: 6px; }
         .resource-grid { display: flex; justify-content: space-between; gap: 18px; margin-top: 0; }
         .resource-item { flex: 1; min-width: 0; text-align: center; }
         .resource-label { display: block; font-size: 10px; line-height: 1.2; color: var(--cs-text-main); opacity: 0.9; }
         .stat-val { font-size: 28px; font-weight: 800; display: block; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cs-green); }
         .resource-stat { font-size: 20px; font-weight: 800; display: block; line-height: 1.05; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: var(--cs-green); }
         .stat-lbl { font-size: 11px; text-transform: uppercase; color: var(--cs-text-main); font-weight: 600; margin: 0; }
-        .split-stat-card { display: flex; flex-direction: column; justify-content: center; }
+        .split-stat-card { display: flex; flex-direction: column; justify-content: flex-start; }
         .split-stat-grid { display: flex; gap: 12px; align-items: flex-start; }
         .split-stat-box { flex: 1; text-align: left; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 
@@ -561,8 +573,10 @@ ui <- dashboardPage(
             transform: none;
             box-shadow: 4px 0 20px rgba(0, 0, 0, 0.18);
             transition: left 0.25s ease;
+            top: var(--topbar-height);
           }
           .sidebar-open .main-sidebar { left: 0; z-index: 1250; }
+          .sidebar-mobile-open .main-sidebar { left: 0; z-index: 1250; }
           .content-wrapper, .main-sidebar:hover + .content-wrapper, .sidebar-open .content-wrapper {
             margin-left: 0 !important;
             padding-left: 0 !important;
@@ -570,8 +584,10 @@ ui <- dashboardPage(
           }
           .sidebar-backdrop { display: block; }
           .sidebar-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
-          .skin-black.sidebar-open .main-sidebar { padding-top: 0 !important; top: 50px !important; }
-          .skin-black.sidebar-open .content-wrapper { padding-top: var(--topbar-height) !important; margin-top: var(--topbar-height) !important; }
+          .sidebar-mobile-open .sidebar-backdrop { opacity: 1; pointer-events: auto; }
+          .skin-black.sidebar-open .main-sidebar { padding-top: 0 !important; top: var(--topbar-height) !important; }
+          .skin-black.sidebar-mobile-open .main-sidebar { padding-top: 0 !important; top: var(--topbar-height) !important; }
+          /* keep content-wrapper top spacing controlled globally to avoid double offsets on mobile */
           .panel-controls { flex-direction: column; gap: 12px; align-items: stretch; }
           .panel-title,
           .panel-filters-wrap { width: 100%; flex: 1 1 auto; margin-left: 0; }
@@ -601,100 +617,88 @@ ui <- dashboardPage(
           .glossary-side-panel { width: 100%; transform: translateX(100%); }
         }
       '))),
-      tags$script(HTML('
-        (function() {
-          function setDarkMode(enabled) {
-            document.body.classList.toggle("dark-mode", enabled);
-            localStorage.setItem("cropsense-dark-mode", enabled ? "1" : "0");
+      tags$script(HTML("(function(){
+          function setDarkMode(enabled){
+            document.body.classList.toggle('dark-mode', enabled);
+            localStorage.setItem('cropsense-dark-mode', enabled ? '1' : '0');
           }
 
-          function setGlossaryOpen(enabled) {
-            var panel = document.getElementById("glossary_panel");
-            if (!panel) return;
-            panel.classList.toggle("open", enabled);
+          function setGlossaryOpen(enabled){
+            var panel = document.getElementById('glossary_panel');
+            if(!panel) return;
+            panel.classList.toggle('open', enabled);
           }
 
-          function initControls() {
-            var darkButton = document.getElementById("dark_toggle_top");
-            var glossaryButton = document.getElementById("glossary_toggle");
-            var glossaryClose = document.getElementById("glossary_panel_close");
+          function initControls(){
+            var darkButton = document.getElementById('dark_toggle_top');
+            var glossaryButton = document.getElementById('glossary_toggle');
+            var glossaryClose = document.getElementById('glossary_panel_close');
+            var topSidebarToggle = document.getElementById('sidebar_toggle_top');
 
-            if (darkButton && !darkButton.dataset.bound) {
-              darkButton.dataset.bound = "1";
-              darkButton.addEventListener("click", function() {
-                setDarkMode(!document.body.classList.contains("dark-mode"));
+            if(darkButton && !darkButton.dataset.bound){
+              darkButton.dataset.bound='1';
+              darkButton.addEventListener('click', function(){ setDarkMode(!document.body.classList.contains('dark-mode')); });
+            }
+
+            if(glossaryButton && !glossaryButton.dataset.bound){
+              glossaryButton.dataset.bound='1';
+              glossaryButton.addEventListener('click', function(){
+                var panel = document.getElementById('glossary_panel');
+                setGlossaryOpen(!(panel && panel.classList.contains('open')));
               });
             }
 
-            if (glossaryButton && !glossaryButton.dataset.bound) {
-              glossaryButton.dataset.bound = "1";
-              glossaryButton.addEventListener("click", function() {
-                var panel = document.getElementById("glossary_panel");
-                setGlossaryOpen(!(panel && panel.classList.contains("open")));
-              });
+            if(glossaryClose && !glossaryClose.dataset.bound){
+              glossaryClose.dataset.bound='1';
+              glossaryClose.addEventListener('click', function(){ setGlossaryOpen(false); });
             }
 
-            if (glossaryClose && !glossaryClose.dataset.bound) {
-              glossaryClose.dataset.bound = "1";
-              glossaryClose.addEventListener("click", function() {
-                setGlossaryOpen(false);
-              });
+            if(topSidebarToggle && !topSidebarToggle.dataset.bound){
+              topSidebarToggle.dataset.bound='1';
+              topSidebarToggle.addEventListener('click', function(){ document.body.classList.toggle('sidebar-mobile-open'); });
             }
 
-            var storedDark = localStorage.getItem("cropsense-dark-mode") === "1";
+            var storedDark = localStorage.getItem('cropsense-dark-mode') === '1';
             setDarkMode(storedDark);
           }
 
-          if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", initControls);
-          } else {
-            initControls();
-          }
-          document.addEventListener("shiny:connected", initControls);
-          
-          // Sidebar hover/open coordination: add small helpers to keep content from overlapping.
-          function bindSidebarInteractions() {
+          if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initControls); } else { initControls(); }
+          document.addEventListener('shiny:connected', initControls);
+
+          function bindSidebarInteractions(){
             var body = document.body;
-            var sidebar = document.querySelector(".main-sidebar");
-            var collapseBtn = document.getElementById("collapse_btn");
-            var backdrop = document.getElementById("sidebar_backdrop");
+            var sidebar = document.querySelector('.main-sidebar');
+            var collapseBtn = document.getElementById('collapse_btn');
+            var backdrop = document.getElementById('sidebar_backdrop');
 
-            if (sidebar && !sidebar.dataset.bound) {
-              sidebar.dataset.bound = "1";
-              sidebar.addEventListener("mouseenter", function() { body.classList.add("sidebar-hovered"); });
-              sidebar.addEventListener("mouseleave", function() { body.classList.remove("sidebar-hovered"); });
+            if(sidebar && !sidebar.dataset.bound){
+              sidebar.dataset.bound='1';
+              var desktopMatch = (window && window.innerWidth && window.innerWidth >= 769);
+              if(desktopMatch){
+                sidebar.addEventListener('mouseenter', function(){ body.classList.add('sidebar-hovered'); });
+                sidebar.addEventListener('mouseleave', function(){ body.classList.remove('sidebar-hovered'); });
+              } else {
+                body.classList.remove('sidebar-hovered');
+              }
             }
 
-            if (collapseBtn && !collapseBtn.dataset.bound) {
-              collapseBtn.dataset.bound = "1";
-              collapseBtn.addEventListener("click", function(e) {
+            if(collapseBtn && !collapseBtn.dataset.bound){
+              collapseBtn.dataset.bound='1';
+              collapseBtn.addEventListener('click', function(e){
                 e.preventDefault();
-                // Toggle the persistent open state (useful for keyboard users).
-                if (document.body.classList.contains("sidebar-open")) {
-                  document.body.classList.remove("sidebar-open");
-                } else {
-                  document.body.classList.add("sidebar-open");
-                }
+                if(document.body.classList.contains('sidebar-open')){ document.body.classList.remove('sidebar-open'); } else { document.body.classList.add('sidebar-open'); }
               });
             }
 
-            if (backdrop && !backdrop.dataset.bound) {
-              backdrop.dataset.bound = "1";
-              backdrop.addEventListener("click", function() {
-                document.body.classList.remove("sidebar-open");
-              });
+            if(backdrop && !backdrop.dataset.bound){
+              backdrop.dataset.bound='1';
+              backdrop.addEventListener('click', function(){ document.body.classList.remove('sidebar-mobile-open'); document.body.classList.remove('sidebar-open'); });
             }
           }
 
-          // Ensure the interactions are bound after DOM ready and when Shiny reconnects.
-          if (document.readyState === "loading") {
-            document.addEventListener("DOMContentLoaded", bindSidebarInteractions);
-          } else {
-            bindSidebarInteractions();
-          }
-          document.addEventListener("shiny:connected", bindSidebarInteractions);
-        })();
-      ')),
+          if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', bindSidebarInteractions); } else { bindSidebarInteractions(); }
+          document.addEventListener('shiny:connected', bindSidebarInteractions);
+        })();")),
 
     div(class = "top-nav",
       div(class = "brand",
@@ -703,9 +707,10 @@ ui <- dashboardPage(
       ),
       div(),
       div(style = "display:flex; align-items:center; gap:12px;",
+        tags$button(id = "sidebar_toggle_top", type = "button", class = "btn btn-default", HTML('☰'), title = "Toggle Sidebar", `aria-label` = "Toggle sidebar"),
         tags$button(id = "dark_toggle_top", type = "button", class = "btn btn-default", HTML('☾')),
         tags$button(id = "glossary_toggle", type = "button", class = "btn btn-default", HTML('📖'), title = "Show Glossary")
-      )
+      ),
     ),
 
     div(class = "sidebar-backdrop", id = "sidebar_backdrop"),
