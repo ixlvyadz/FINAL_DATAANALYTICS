@@ -46,6 +46,94 @@ ui <- dashboardPage(
           --cs-border: #315140;
         }
 
+        .dark-mode .modern-card,
+        .dark-mode .stat-card,
+        .dark-mode .resource-card,
+        .dark-mode .weather-card,
+        .dark-mode .graph-card {
+          background: linear-gradient(180deg, #1a2b21, #132018) !important;
+          color: var(--cs-text-main);
+          border: 1px solid rgba(181, 199, 141, 0.12) !important;
+          box-shadow: 0 10px 28px rgba(0, 0, 0, 0.28), 0 1px 0 rgba(255, 255, 255, 0.02) inset;
+        }
+        .dark-mode .modern-card:hover,
+        .dark-mode .stat-card:hover,
+        .dark-mode .graph-card:hover {
+          box-shadow: 0 16px 36px rgba(0, 0, 0, 0.34);
+        }
+        .dark-mode .card-header {
+          color: var(--cs-text-main);
+          border-bottom-color: rgba(181, 199, 141, 0.12);
+        }
+        .dark-mode .graph-card::before {
+          background: linear-gradient(90deg, #8fb36c 0%, #406d4f 60%, #6bcf97 100%);
+        }
+        .dark-mode .summary-cards .stat-card,
+        .dark-mode .summary-cards .resource-card,
+        .dark-mode .summary-cards .weather-card {
+          background: linear-gradient(180deg, #1a2b21, #132018) !important;
+        }
+        .dark-mode .stat-lbl,
+        .dark-mode .resource-label,
+        .dark-mode .weather-desc,
+        .dark-mode .weather-meta,
+        .dark-mode .weather-location,
+        .dark-mode .panel-title p,
+        .dark-mode .glossary-definition,
+        .dark-mode .card-header {
+          color: var(--cs-text-main) !important;
+        }
+        .dark-mode .stat-val,
+        .dark-mode .resource-stat,
+        .dark-mode .weather-temp,
+        .dark-mode .weather-icon {
+          color: #d9f99d !important;
+        }
+        .dark-mode .stat-lbl,
+        .dark-mode .resource-label,
+        .dark-mode .weather-desc,
+        .dark-mode .weather-meta,
+        .dark-mode .panel-title p {
+          opacity: 0.95;
+        }
+        .dark-mode .js-plotly-plot .xtick text,
+        .dark-mode .js-plotly-plot .ytick text,
+        .dark-mode .js-plotly-plot .gtitle,
+        .dark-mode .js-plotly-plot .legend text,
+        .dark-mode .js-plotly-plot .annotation text,
+        .dark-mode .js-plotly-plot .infolayer text,
+        .dark-mode .js-plotly-plot .colorbar text {
+          fill: var(--cs-text-main) !important;
+          color: var(--cs-text-main) !important;
+        }
+        .dark-mode .js-plotly-plot .bg {
+          fill: transparent !important;
+        }
+
+        .fa,
+        .fa-brands,
+        .fa-classic,
+        .fa-regular,
+        .fa-sharp,
+        .fa-solid,
+        .fab,
+        .far,
+        .fas {
+          font-family: "Font Awesome 6 Free" !important;
+          font-style: normal;
+          font-variant: normal;
+          line-height: 1;
+        }
+        .fa-solid,
+        .fas {
+          font-weight: 900;
+        }
+        .fa-brands,
+        .fab {
+          font-family: "Font Awesome 6 Brands" !important;
+          font-weight: 400;
+        }
+
         * { box-sizing: border-box; font-family: "Poppins", sans-serif !important; }
         html, body { overflow-x: hidden; }
         body, .content-wrapper { background: var(--cs-bg); color: var(--cs-text-main); }
@@ -138,10 +226,23 @@ ui <- dashboardPage(
         }
         /* Desktop-only hover/expanded behaviors. On small screens the toggle controls expansion. */
         @media (min-width: 769px) {
+          /* Sidebar expands directly on hover; JS body classes remain as fallback. */
+          .main-sidebar:hover {
+            width: var(--sidebar-width) !important;
+          }
+          .main-sidebar:hover ~ .content-wrapper {
+            margin-left: var(--sidebar-width) !important;
+          }
+
           /* Sidebar expands when body indicates hovered/open state (controlled by JS). */
           body.sidebar-hovered .main-sidebar,
           body.sidebar-open .main-sidebar {
             width: var(--sidebar-width) !important;
+          }
+
+          body.sidebar-hovered .content-wrapper,
+          body.sidebar-open .content-wrapper {
+            margin-left: var(--sidebar-width) !important;
           }
 
           .main-sidebar:hover .menu-label-text,
@@ -433,7 +534,7 @@ ui <- dashboardPage(
           .panel-filter-item { width: 100% !important; flex: 1 1 100% !important; }
         }
 
-        .stat-card { background: linear-gradient(180deg, #ffffff, #fbfbf8); border-radius: 12px; padding: 18px; border: 0; height: 110px; color: var(--cs-text-main); box-shadow: 0 8px 22px rgba(10,20,12,0.06); display:flex; flex-direction:column; justify-content:center; transition: transform 0.18s ease, box-shadow 0.18s ease; }
+        .stat-card { background: linear-gradient(180deg, #ffffff, #fbfbf8); border-radius: 12px; padding: 18px; border: 0; height: 110px; color: var(--cs-text-main); box-shadow: 0 8px 22px rgba(10,20,12,0.06); display:flex; flex-direction:column; justify-content:flex-start; transition: transform 0.18s ease, box-shadow 0.18s ease; }
         .stat-card:hover { transform: translateY(-3px); box-shadow: 0 14px 30px rgba(10,20,12,0.08); }
         .resource-card { height: 110px; padding: 18px; display: flex; flex-direction: column; justify-content: flex-start; gap: 6px; }
         .resource-grid { display: flex; justify-content: space-between; gap: 18px; margin-top: 0; }
@@ -446,7 +547,7 @@ ui <- dashboardPage(
         .split-stat-grid { display: flex; gap: 12px; align-items: flex-start; }
         .split-stat-box { flex: 1; text-align: left; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 
-        .weather-card { display: flex; flex-direction: column; gap: 4px; padding: 18px; height: 110px; justify-content: center; }
+        .weather-card { display: flex; flex-direction: column; gap: 4px; padding: 18px; height: 110px; justify-content: flex-start; }
         .weather-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
         .weather-temp { font-size: 28px; font-weight: 700; line-height: 1; }
         .weather-desc { font-size: 13px; }
@@ -551,6 +652,9 @@ ui <- dashboardPage(
           line-height: 1.4;
           background: rgba(16, 185, 129, 0.08);
         }
+        .glossary-item.open .glossary-definition { display: block; }
+        .glossary-item .glossary-arrow { transition: transform 0.18s ease, transform-origin 50% 50%; }
+        .glossary-item.open .glossary-arrow { transform: rotate(90deg); }
 
         @media (max-width: 768px) {
           /* ensure no content gutters on small screens */
@@ -629,6 +733,24 @@ ui <- dashboardPage(
             panel.classList.toggle('open', enabled);
           }
 
+          function bindGlossaryTerms(){
+            var items = document.querySelectorAll('.glossary-item');
+            if(!items || !items.length) return;
+            items.forEach(function(item){
+              if(item.dataset.boundGloss) return; item.dataset.boundGloss = '1';
+              var term = item.querySelector('.glossary-term');
+              var def = item.querySelector('.glossary-definition');
+              var arrow = item.querySelector('.glossary-arrow');
+              if(term){
+                term.addEventListener('click', function(e){
+                  var open = item.classList.toggle('open');
+                  if(def){ def.style.display = open ? 'block' : 'none'; }
+                  if(arrow){ arrow.textContent = open ? '\u25BC' : '\u25B6'; }
+                });
+              }
+            });
+          }
+
           function initControls(){
             var darkButton = document.getElementById('dark_toggle_top');
             var glossaryButton = document.getElementById('glossary_toggle');
@@ -660,6 +782,9 @@ ui <- dashboardPage(
 
             var storedDark = localStorage.getItem('cropsense-dark-mode') === '1';
             setDarkMode(storedDark);
+
+            // bind glossary item toggles (safe to call multiple times)
+            bindGlossaryTerms();
           }
 
           if(document.readyState === 'loading'){ document.addEventListener('DOMContentLoaded', initControls); } else { initControls(); }
@@ -726,49 +851,70 @@ ui <- dashboardPage(
             span("📈 YoY Change", style = "font-weight: 600; color: #3b82f6;"),
             span("▶", class = "glossary-arrow")
           ),
-          div(class = "glossary-definition", "Year-over-Year percentage change comparing current year to previous year with same filters applied.")
+          div(class = "glossary-definition",
+            span("This compares a metric to the same period in the previous year."),
+            div(style = "margin-top:8px; font-size:12px; color:var(--cs-text-sub);", strong("Example: "), "You harvested 150 bushels per acre last October and 130 the previous October, so you saw a positive YoY change.")
+          )
         ),
         div(class = "glossary-item", `data-term` = "delta",
           div(class = "glossary-term",
             span("Δ Delta", style = "font-weight: 600; color: #22c55e;"),
             span("▶", class = "glossary-arrow")
           ),
-          div(class = "glossary-definition", "Change value shown as percentage. Green (📈) indicates increase, Red (📉) indicates decrease.")
+          div(class = "glossary-definition",
+            span("Delta: The change or difference between two values."),
+            div(style = "margin-top:8px; font-size:12px; color:var(--cs-text-sub);", strong("Example: "), "You measured soil moisture before and after irrigation and observed a delta of 5 percentage points.")
+          )
         ),
         div(class = "glossary-item", `data-term` = "benchmark",
           div(class = "glossary-term",
             span("📊 Benchmark", style = "font-weight: 600; color: #a855f7;"),
             span("▶", class = "glossary-arrow")
           ),
-          div(class = "glossary-definition", "Dashed line showing national average (mean yield). Used to compare individual location performance.")
+          div(class = "glossary-definition",
+            span("Benchmark: A reference value used to compare performance."),
+            div(style = "margin-top:8px; font-size:12px; color:var(--cs-text-sub);", strong("Example: "), "The regional average is 40 bushels per acre; you compare your 45 bushels to that benchmark to see how you are performing.")
+          )
         ),
         div(class = "glossary-item", `data-term` = "yield",
           div(class = "glossary-term",
             span("🌾 Yield", style = "font-weight: 600; color: #f97316;"),
             span("▶", class = "glossary-arrow")
           ),
-          div(class = "glossary-definition", "Agricultural output measured in crop production volume. Higher yield indicates better productivity.")
+          div(class = "glossary-definition",
+            span("Yield: The amount of crop harvested per unit of land (for example, bushels per acre)."),
+            div(style = "margin-top:8px; font-size:12px; color:var(--cs-text-sub);", strong("Example: "), "This season you achieved a yield of 3.2 tons per hectare.")
+          )
         ),
         div(class = "glossary-item", `data-term` = "record",
           div(class = "glossary-term",
             span("🏆 Record", style = "font-weight: 600; color: #10b981;"),
             span("▶", class = "glossary-arrow")
           ),
-          div(class = "glossary-definition", "Highest value in the dataset, marked with annotation on trend charts for easy identification.")
+          div(class = "glossary-definition",
+            span("Record: Either a historical high or a logged data entry."),
+            div(style = "margin-top:8px; font-size:12px; color:var(--cs-text-sub);", strong("Example: "), "You logged planting dates and seed type, and last year\'s highest yield became your new record.")
+          )
         ),
         div(class = "glossary-item", `data-term` = "efficiency",
           div(class = "glossary-term",
             span("⚡ Efficiency", style = "font-weight: 600; color: #0ea5e9;"),
             span("▶", class = "glossary-arrow")
           ),
-          div(class = "glossary-definition", "Productivity ratio showing crop output relative to soil type, temperature, or other factors.")
+          div(class = "glossary-definition",
+            span("Efficiency: How well inputs (water, seed, fertilizer, labor) are converted into outputs (harvest)."),
+            div(style = "margin-top:8px; font-size:12px; color:var(--cs-text-sub);", strong("Example: "), "You matched your neighbor's yield while using less water and fertilizer, so your operation is more efficient.")
+          )
         ),
         div(class = "glossary-item", `data-term` = "season",
           div(class = "glossary-term",
             span("🌱 Season", style = "font-weight: 600; color: #f9b442;"),
             span("▶", class = "glossary-arrow")
           ),
-          div(class = "glossary-definition", "Growing period classification (Kharif, Rabi, Summer) affecting crop selection and yield patterns.")
+          div(class = "glossary-definition",
+            span("Season: A climate-driven period that defines planting, growing, and harvest windows."),
+            div(style = "margin-top:8px; font-size:12px; color:var(--cs-text-sub);", strong("Example: "), "You plant rice in the wet season because that matches its ideal growing window.")
+          )
         )
       )
     ),

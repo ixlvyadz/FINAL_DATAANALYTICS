@@ -17,6 +17,15 @@ clean_season_data <- function(path) {
     mutate(across(where(is.character), ~ na_if(.x, '')))
 }
 
+theme_dark_plot <- function(p) {
+  plotly::layout(
+    p,
+    paper_bgcolor = 'rgba(0,0,0,0)',
+    plot_bgcolor = 'rgba(0,0,0,0)',
+    font = list(color = '#eff7bf')
+  )
+}
+
 
 # Load ML model if present
 model_rf <- NULL
@@ -100,54 +109,54 @@ server <- function(input, output, session) {
     corr_df$Factor_X <- factor(corr_df$Factor_X, levels = factor_levels)
     corr_df$Factor_Y <- factor(corr_df$Factor_Y, levels = rev(factor_levels))
 
-    plot_ly(
-      corr_df,
+    corr_df$HoverText <- paste0('n=', corr_df$N, '<br>p=', sprintf('%.3g', corr_df$P))
+
+    corr_plot <- plotly::plot_ly(
+      data = corr_df,
       x = ~Factor_X,
       y = ~Factor_Y,
       z = ~Correlation,
-      text = ~paste0('n=', N, '<br>p=', sprintf('%.3g', P)),
+      text = ~HoverText,
       type = 'heatmap',
+      zmin = -1,
+      zmax = 1,
       colorscale = list(
         c(0, '#d73027'),
         c(0.5, '#fff7b0'),
         c(1, '#1a9850')
       ),
-      zmin = -1,
-      zmax = 1,
       colorbar = list(title = 'r', titleside = 'right', tickvals = c(-1, 0, 1), ticktext = c('-1','0','1'), thickness = 16),
       hovertemplate = paste0(
         '<b>%{x} vs %{y}</b><br>',
         'Correlation: %{z:.2f}<br>',
         '%{text}<extra></extra>'
       )
-    ) %>%
-      layout(
-        margin = list(l = 38, r = 18, t = 10, b = 26),
-        paper_bgcolor = 'rgba(0,0,0,0)',
-        plot_bgcolor = 'rgba(0,0,0,0)',
-        coloraxis = list(colorscale = list(
-          c(0, '#d73027'),
-          c(0.5, '#f7f7f7'),
-          c(1, '#1a9850')
-        )),
-        xaxis = list(
-          title = 'Correlation',
-          side = 'bottom',
-          tickangle = 0,
-          tickfont = list(size = 11, color = '#26402f'),
-          showgrid = FALSE,
-          zeroline = FALSE,
-          titlefont = list(size = 12, color = '#26402f')
-        ),
-        yaxis = list(
-          title = '',
-          tickfont = list(size = 11, color = '#26402f'),
-          showgrid = FALSE,
-          zeroline = FALSE,
-          autorange = 'reversed'
-        )
-      ) %>%
-      config(displayModeBar = FALSE, responsive = TRUE)
+    )
+
+    corr_plot <- plotly::layout(
+      corr_plot,
+      margin = list(l = 38, r = 18, t = 10, b = 26),
+      paper_bgcolor = 'rgba(0,0,0,0)',
+      plot_bgcolor = 'rgba(0,0,0,0)',
+      xaxis = list(
+        title = '',
+        side = 'bottom',
+        tickangle = 0,
+        tickfont = list(size = 11, color = '#26402f'),
+        showgrid = FALSE,
+        zeroline = FALSE,
+        titlefont = list(size = 12, color = '#26402f')
+      ),
+      yaxis = list(
+        title = '',
+        tickfont = list(size = 11, color = '#26402f'),
+        showgrid = FALSE,
+        zeroline = FALSE,
+        autorange = 'reversed'
+      )
+    )
+
+    plotly::config(corr_plot, displayModeBar = FALSE, responsive = TRUE)
   })
   weather_code_label <- function(code) {
     switch(as.character(code),
@@ -459,7 +468,7 @@ server <- function(input, output, session) {
   output$pred_alternatives <- renderPlotly({
     probs <- prob_reactive()
     if (is.null(probs)) {
-      return(plot_ly() %>% layout(xaxis=list(visible=FALSE), yaxis=list(visible=FALSE)))
+      return(theme_dark_plot(plot_ly()) %>% layout(xaxis=list(visible=FALSE), yaxis=list(visible=FALSE)))
     }
     dfp <- data.frame(crop = colnames(probs), prob = as.numeric(probs[1, ]))
     dfp <- dfp %>% arrange(desc(prob)) %>% head(5)
@@ -475,7 +484,8 @@ server <- function(input, output, session) {
       textposition = 'auto',
       marker = list(color = '#10b981')
     ) %>%
-      layout(xaxis = list(title = 'Probability', range = c(0, 1)), yaxis = list(title = ''), margin = list(l=90))
+      layout(xaxis = list(title = 'Probability', range = c(0, 1)), yaxis = list(title = ''), margin = list(l=90)) %>%
+      theme_dark_plot()
   })
 
   # Contextual insight text (simple summary)
@@ -492,7 +502,12 @@ server <- function(input, output, session) {
     cats <- c('N','P','K','Temp','Hum','pH','Rain')
     plot_ly(type = 'scatterpolar', r = ideal, theta = cats, fill = 'toself', name = 'Ideal Profile') %>%
       add_trace(r = vals, theta = cats, fill = 'toself', name = 'Your Soil') %>%
-      layout(polar = list(radialaxis = list(visible = TRUE, range = c(0,1))), showlegend = TRUE)
+      layout(
+        polar = list(radialaxis = list(visible = TRUE, range = c(0,1), tickfont = list(color = '#eff7bf'))),
+        showlegend = TRUE,
+        legend = list(font = list(color = '#eff7bf'))
+      ) %>%
+      theme_dark_plot()
   })
 
 
