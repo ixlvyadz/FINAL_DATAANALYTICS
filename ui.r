@@ -23,27 +23,27 @@ ui <- dashboardPage(
                 href = "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&display=swap"),
       tags$style(HTML('
         :root {
-          --cs-bg: #f5f5f5;
-          --cs-card-bg: #ffffff;
-          --cs-green: #406d4f;
-          --cs-sidebar: #406d4f;
+          --cs-bg: #f1f6ec;
+          --cs-card-bg: #fbfff7;
+          --cs-green: #4f7343;
+          --cs-sidebar: #3f5f37;
           /* RGB components for translucent/blurred header using glassmorphism */
-          --cs-sidebar-rgb: 64, 109, 79;
-          --cs-text-main: #26402f;
-          --cs-text-sub: #66785b;
-          --cs-border: #d8d1a0;
+          --cs-sidebar-rgb: 63, 95, 55;
+          --cs-text-main: #2b4027;
+          --cs-text-sub: #627158;
+          --cs-border: #bfd0aa;
           --topbar-height: 64px;
           --sidebar-collapsed: 70px;
           --content-gutter: 0px;
           --sidebar-width: 250px;
         }
         .dark-mode {
-          --cs-bg: #0d170f;
-          --cs-sidebar: #102018;
-          --cs-card-bg: #1a2b21;
-          --cs-text-main: #eff7bf;
-          --cs-text-sub: #b9c8ad;
-          --cs-border: #315140;
+          --cs-bg: #0f1610;
+          --cs-sidebar: #132017;
+          --cs-card-bg: #18271b;
+          --cs-text-main: #eaf4d0;
+          --cs-text-sub: #b7c8a4;
+          --cs-border: #2e4533;
         }
 
         .dark-mode .modern-card,
@@ -66,7 +66,33 @@ ui <- dashboardPage(
           border-bottom-color: rgba(181, 199, 141, 0.12);
         }
         .dark-mode .graph-card::before {
-          background: linear-gradient(90deg, #8fb36c 0%, #406d4f 60%, #6bcf97 100%);
+          background: linear-gradient(90deg, #86ad58 0%, #4f7343 60%, #6f9850 100%);
+        }
+        .dark-mode .prediction-hero {
+          background: linear-gradient(90deg, #132018, #1a2b21) !important;
+          color: var(--cs-text-main) !important;
+          border: 1px solid rgba(181, 199, 141, 0.12) !important;
+        }
+        .dark-mode .prediction-hero > div:first-child {
+          background: linear-gradient(135deg, #406d4f, #2f5740) !important;
+        }
+        .dark-mode .prediction-hero > div:last-child > div:nth-child(1) {
+          color: var(--cs-text-sub) !important;
+        }
+        .dark-mode .prediction-hero > div:last-child > div:nth-child(2) {
+          color: var(--cs-text-main) !important;
+        }
+        .dark-mode .prediction-hero > div:last-child > div:nth-child(3) > div:nth-child(1) {
+          background: #203124 !important;
+          color: #eff7bf !important;
+        }
+        .dark-mode .prediction-hero > div:last-child > div:nth-child(3) > div:nth-child(2) {
+          background: #18243b !important;
+          color: #d9e6ff !important;
+        }
+        .dark-mode .prediction-hero > div:last-child > div:nth-child(3) > div:nth-child(3) {
+          background: #3a2a16 !important;
+          color: #ffd8a8 !important;
         }
         .dark-mode .summary-cards .stat-card,
         .dark-mode .summary-cards .resource-card,
@@ -191,8 +217,9 @@ ui <- dashboardPage(
           overflow-y: auto;
           /* allow horizontal children (labels) to animate without being clipped */
           overflow-x: visible;
-          background: var(--cs-sidebar) !important;
-          border-right: 1px solid rgba(51, 82, 65, 0.95);
+          background: linear-gradient(180deg, rgba(63, 95, 55, 0.98), rgba(42, 76, 46, 0.98)) !important;
+          border-right: 1px solid rgba(191, 208, 170, 0.18);
+          box-shadow: 10px 0 28px rgba(2, 6, 23, 0.18);
           transition: width 0.3s ease;
           will-change: width, transform;
           z-index: 900;
@@ -200,22 +227,63 @@ ui <- dashboardPage(
 
 
         /* position menu items at top of sidebar (just below top nav) */
-        .main-sidebar { padding-top: 8px !important; }
-        .sidebar-menu { padding-top: 4px; margin-top: 4px; }
+        .main-sidebar { padding-top: 10px !important; }
+        .sidebar-menu { padding-top: 6px; margin-top: 4px; padding-left: 0; padding-right: 0; }
+        .sidebar-menu > li { margin: 0 8px 6px 8px; }
         .sidebar-menu > li > a {
           display: flex;
           align-items: center;
-          gap: 4px;
-          color: #eff7bf !important;
-          margin: 6px 10px;
-          padding: 12px 12px !important;
-          border-radius: 12px;
+          gap: 10px;
+          color: #eef7df !important;
+          margin: 0;
+          padding: 12px 14px !important;
+          border-radius: 14px;
           font-size: 14px;
+          line-height: 1;
+          background: rgba(238, 247, 223, 0.06);
+          border: 1px solid rgba(238, 247, 223, 0.08);
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+          transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
         }
-        .sidebar-menu > li > a:hover { background: rgba(239, 247, 191, 0.18) !important; color: #fff8d8 !important; }
-        .sidebar-menu > li.active > a { background: rgba(184, 201, 90, 0.28) !important; color: #fff8d8 !important; font-weight: 600; }
+        .sidebar-menu > li > a:hover {
+          background: rgba(238, 247, 223, 0.12) !important;
+          color: #fcfff7 !important;
+          border-color: rgba(238, 247, 223, 0.18);
+          transform: translateX(2px);
+          box-shadow: 0 8px 18px rgba(2, 6, 23, 0.12);
+        }
+        .sidebar-menu > li.active > a {
+          background: linear-gradient(135deg, rgba(104, 150, 84, 0.34), rgba(84, 129, 72, 0.24)) !important;
+          color: #fcfff7 !important;
+          font-weight: 700;
+          border-color: rgba(238, 247, 223, 0.18);
+          box-shadow: 0 10px 22px rgba(2, 6, 23, 0.18);
+        }
+        .sidebar-menu > li.active > a::before {
+          content: "";
+          position: absolute;
+          left: 6px;
+          width: 4px;
+          height: 22px;
+          border-radius: 999px;
+          background: linear-gradient(180deg, #bde19d, #7fb66a);
+        }
+        .sidebar-menu > li > a { position: relative; }
         .sidebar-menu > li > a i { min-width: 26px; text-align: center; font-size: 18px; }
-        .menu-emoji { display: inline-block; width: 26px; text-align: center; font-size: 18px; line-height: 1; }
+        .menu-emoji {
+          display: inline-flex;
+          width: 28px;
+          height: 28px;
+          align-items: center;
+          justify-content: center;
+          text-align: center;
+          font-size: 18px;
+          line-height: 1;
+          border-radius: 10px;
+          background: rgba(238, 247, 223, 0.08);
+          border: 1px solid rgba(238, 247, 223, 0.08);
+          flex: 0 0 28px;
+        }
         .menu-label-text, .ctrl-text {
           opacity: 0;
           transform: translateX(-6px);
@@ -261,17 +329,28 @@ ui <- dashboardPage(
           right: 0;
           bottom: 20px;
           padding-top: 16px;
-          border-top: 1px solid rgba(239, 247, 191, 0.12);
+          border-top: 1px solid rgba(238, 247, 223, 0.10);
         }
         .sidebar-bottom-item {
           display: flex;
           align-items: center;
-          padding: 12px 23px;
-          color: #eff7bf;
+          gap: 10px;
+          margin: 0 8px;
+          padding: 12px 14px;
+          color: #eef7df;
           cursor: pointer;
           user-select: none;
+          border-radius: 14px;
+          background: rgba(238, 247, 223, 0.05);
+          border: 1px solid rgba(238, 247, 223, 0.07);
+          transition: background 0.18s ease, transform 0.18s ease, border-color 0.18s ease;
         }
-        .sidebar-bottom-item:hover { color: #fff8d8; }
+        .sidebar-bottom-item:hover {
+          color: #fcfff7;
+          background: rgba(238, 247, 223, 0.12);
+          border-color: rgba(238, 247, 223, 0.16);
+          transform: translateX(2px);
+        }
 
         .top-nav {
           position: fixed;
@@ -284,24 +363,24 @@ ui <- dashboardPage(
           justify-content: space-between;
           height: var(--topbar-height);
           padding: 12px 16px 12px 12px;
-          /* glassmorphism: translucent version of sidebar color with blur */
-          background: rgba(var(--cs-sidebar-rgb), 0.92) !important;
-          color: #eff7bf;
-          border-bottom: 1px solid rgba(51, 82, 65, 0.95);
-          backdrop-filter: blur(12px);
-          box-shadow: 0 6px 20px rgba(2,6,23,0.12);
+          /* match sidebar color for a unified header/navigation look */
+          background: linear-gradient(180deg, rgba(63, 95, 55, 0.98), rgba(42, 76, 46, 0.98)) !important;
+          color: #eef7df;
+          border-bottom: 1px solid rgba(191, 208, 170, 0.18);
+          backdrop-filter: blur(10px);
+          box-shadow: 10px 0 28px rgba(2, 6, 23, 0.12);
         }
         .top-nav .brand { display: flex; align-items: center; gap: 10px; cursor: pointer; user-select: none; }
-        .topbar-leaf-icon { display: inline-block; font-size: 20px; line-height: 1; color: #eff7bf; }
+        .topbar-leaf-icon { display: inline-block; font-size: 20px; line-height: 1; color: #eef7df; }
         .topbar-logo-text { font-size: 14px; font-weight: 700; letter-spacing: 0.2px; }
         .top-nav button#sidebar_toggle_top,
         .top-nav button#dark_toggle_top,
         .top-nav button#glossary_toggle {
-          background: rgba(239, 247, 191, 0.12);
-          border: 1px solid rgba(239, 247, 191, 0.22);
-          color: #eff7bf;
-          padding: 8px 10px;
-          border-radius: 8px;
+          background: rgba(238, 247, 223, 0.06);
+          border: 1px solid rgba(238, 247, 223, 0.10);
+          color: #eef7df;
+          padding: 8px 12px;
+          border-radius: 14px;
           font-size: 16px;
           min-width: 38px;
           height: 38px;
@@ -309,6 +388,16 @@ ui <- dashboardPage(
           align-items: center;
           justify-content: center;
           cursor: pointer;
+          box-shadow: inset 0 1px 0 rgba(255,255,255,0.03);
+          transition: transform 0.18s ease, background 0.18s ease, border-color 0.18s ease, box-shadow 0.18s ease;
+        }
+        .top-nav button#sidebar_toggle_top:hover,
+        .top-nav button#dark_toggle_top:hover,
+        .top-nav button#glossary_toggle:hover {
+          background: rgba(238, 247, 223, 0.12);
+          border-color: rgba(238, 247, 223, 0.16);
+          transform: translateY(-1px);
+          box-shadow: 0 8px 18px rgba(2, 6, 23, 0.16);
         }
         .top-nav button#sidebar_toggle_top { display: none; }
         /* show the top sidebar toggle on mobile */
@@ -842,13 +931,13 @@ ui <- dashboardPage(
 
     div(id = "glossary_panel", class = "glossary-side-panel",
       div(class = "glossary-panel-header",
-        span("📖 Data Glossary", style = "flex:1; font-size:15px; font-weight:600;"),
+        span("Data Glossary", style = "flex:1; font-size:15px; font-weight:600;"),
         tags$button(id = "glossary_panel_close", type = "button", class = "btn btn-sm btn-default", HTML('✕'), style = "padding:4px 8px; font-size:12px;")
       ),
       div(class = "glossary-panel-content",
         div(class = "glossary-item", `data-term` = "yoy",
           div(class = "glossary-term",
-            span("📈 YoY Change", style = "font-weight: 600; color: #3b82f6;"),
+            span("YoY Change", style = "font-weight: 600; color: #3b82f6;"),
             span("▶", class = "glossary-arrow")
           ),
           div(class = "glossary-definition",
@@ -858,7 +947,7 @@ ui <- dashboardPage(
         ),
         div(class = "glossary-item", `data-term` = "delta",
           div(class = "glossary-term",
-            span("Δ Delta", style = "font-weight: 600; color: #22c55e;"),
+            span("Delta", style = "font-weight: 600; color: #22c55e;"),
             span("▶", class = "glossary-arrow")
           ),
           div(class = "glossary-definition",
@@ -868,7 +957,7 @@ ui <- dashboardPage(
         ),
         div(class = "glossary-item", `data-term` = "benchmark",
           div(class = "glossary-term",
-            span("📊 Benchmark", style = "font-weight: 600; color: #a855f7;"),
+            span("Benchmark", style = "font-weight: 600; color: #a855f7;"),
             span("▶", class = "glossary-arrow")
           ),
           div(class = "glossary-definition",
@@ -878,7 +967,7 @@ ui <- dashboardPage(
         ),
         div(class = "glossary-item", `data-term` = "yield",
           div(class = "glossary-term",
-            span("🌾 Yield", style = "font-weight: 600; color: #f97316;"),
+            span("Yield", style = "font-weight: 600; color: #f97316;"),
             span("▶", class = "glossary-arrow")
           ),
           div(class = "glossary-definition",
@@ -888,7 +977,7 @@ ui <- dashboardPage(
         ),
         div(class = "glossary-item", `data-term` = "record",
           div(class = "glossary-term",
-            span("🏆 Record", style = "font-weight: 600; color: #10b981;"),
+            span("Record", style = "font-weight: 600; color: #10b981;"),
             span("▶", class = "glossary-arrow")
           ),
           div(class = "glossary-definition",
@@ -898,7 +987,7 @@ ui <- dashboardPage(
         ),
         div(class = "glossary-item", `data-term` = "efficiency",
           div(class = "glossary-term",
-            span("⚡ Efficiency", style = "font-weight: 600; color: #0ea5e9;"),
+            span("Efficiency", style = "font-weight: 600; color: #0ea5e9;"),
             span("▶", class = "glossary-arrow")
           ),
           div(class = "glossary-definition",
@@ -908,7 +997,7 @@ ui <- dashboardPage(
         ),
         div(class = "glossary-item", `data-term` = "season",
           div(class = "glossary-term",
-            span("🌱 Season", style = "font-weight: 600; color: #f9b442;"),
+            span("Season", style = "font-weight: 600; color: #f9b442;"),
             span("▶", class = "glossary-arrow")
           ),
           div(class = "glossary-definition",
@@ -998,10 +1087,10 @@ ui <- dashboardPage(
                   selectInput("efficiency_var_select", NULL, choices = c("Crop Distribution", "Soil Type", "Temperature"), selected = "Crop Distribution", width = "220px")
                 )
               ),
-              div(id = "eff_tooltip", class = "eff-tooltip", style = "display:none; position:absolute; bottom:60px; right:12px; max-width:320px; z-index:2000;",
+              div(id = "eff_tooltip", class = "eff-tooltip", style = "display:none; position:absolute; bottom:60px; right:12px; max-width:320px; z-index:1100;",
                   HTML('<div style="display:flex; gap:8px; align-items:flex-start;"><div id="eff_tooltip_content" style="flex:1"></div><button id="eff_tooltip_close" class="btn btn-xs btn-default" style="background:transparent; border:none; color:#cbd5e1; font-size:14px;">✕</button></div>')
               ),
-              actionButton("eff_help_btn", "?", class = "btn btn-default btn-sm", style = "position:absolute; bottom:12px; right:12px; padding:6px 8px; font-weight:700; z-index:1999;"),
+              actionButton("eff_help_btn", "?", class = "btn btn-default btn-sm", style = "position:absolute; bottom:12px; right:12px; padding:6px 8px; font-weight:700; z-index:1001;"),
               div(class = "graph-body", plotlyOutput("efficiency_scatter", height = "350px"))
             )
           )
