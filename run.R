@@ -1,2 +1,1 @@
-setwd('d:\\DATAANALYTICS2')
-shiny::runApp(port=3456)
+shiny::runApp(".", host = "127.0.0.1", port = 7777, launch.browser = TRUE)

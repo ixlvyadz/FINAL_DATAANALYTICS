@@ -8,13 +8,46 @@ utils::globalVariables(c(
   'Location', 'Crops', 'yeilds', 'Temperature', 'Year', 'State', 'Crop', 'Season',
   'Yield', 'Area', 'Val', 'AvgY', 'PrevYear', 'Delta', 'prob', 'N', 'P', 'K',
   'temperature', 'humidity', 'ph', 'rainfall', 'price', 'Humidity', 'Rainfall',
-  'Temperature', 'State_Name', 'Prod', 'Temp', 'DeltaLabel', 'Crop_Year'
+  'Temperature', 'State_Name', 'Prod', 'Temp', 'DeltaLabel', 'Crop_Year',
+  'RecordCount', 'CropCount'
 ))
 
-clean_season_data <- function(path) {
-  read.csv(path, stringsAsFactors = FALSE, na.strings = c('', 'NA'), check.names = FALSE) %>%
+load_dashboard_data <- function(path) {
+  raw <- read.csv(path, stringsAsFactors = FALSE, na.strings = c('', 'NA'), check.names = FALSE) %>%
     mutate(across(where(is.character), ~ trimws(.x))) %>%
-    mutate(across(where(is.character), ~ na_if(.x, '')))
+    mutate(across(where(is.character), ~ na_if(.x, ''))) %>%
+    rename(State = Location, Crop = Crops, Yield = yeilds, Temp = Temperature) %>%
+    rename_with(~ gsub(" ", "_", .x))
+
+  raw %>%
+    mutate(
+      Year = as.integer(.data$Year),
+      Area = as.numeric(.data$Area),
+      Rainfall = as.numeric(.data$Rainfall),
+      Temp = as.numeric(.data$Temp),
+      Yield = as.numeric(.data$Yield),
+      Humidity = as.numeric(.data$Humidity),
+      price = as.numeric(.data$price),
+      Soil_type = if_else(is.na(.data$Soil_type), "Not specified", .data$Soil_type),
+      Temp = if_else(.data$Temp >= -10 & .data$Temp <= 60, .data$Temp, NA_real_)
+    )
+}
+
+empty_plot_message <- function(message) {
+  plot_ly() %>%
+    layout(
+      paper_bgcolor = 'rgba(0,0,0,0)',
+      plot_bgcolor = 'rgba(0,0,0,0)',
+      xaxis = list(visible = FALSE),
+      yaxis = list(visible = FALSE),
+      annotations = list(list(
+        text = message,
+        x = 0.5, y = 0.5, xref = 'paper', yref = 'paper',
+        showarrow = FALSE,
+        font = list(color = '#66785b', size = 14)
+      ))
+    ) %>%
+    config(displayModeBar = FALSE)
 }
 
 theme_dark_plot <- function(p) {
@@ -33,40 +66,26 @@ if (file.exists('model_rf.RDS')) {
   try({ model_rf <- readRDS('model_rf.RDS') }, silent = TRUE)
 }
 
+data_clean <- load_dashboard_data('data_season.csv')
+
 server <- function(input, output, session) {
   output$stat_corr <- renderPlotly({
-    corr_source <- tryCatch({
-      clean_season_data('data_season.csv')
-    }, error = function(e) NULL)
+    corr_fields <- c('Area', 'Rainfall', 'Temp', 'Yield', 'Humidity')
 
-    if (is.null(corr_source)) {
-      return(plot_ly() %>% layout(
-        paper_bgcolor = 'rgba(0,0,0,0)',
-        plot_bgcolor = 'rgba(0,0,0,0)',
-        xaxis = list(visible = FALSE),
-        yaxis = list(visible = FALSE),
-        annotations = list(list(
-          text = 'Correlation data unavailable',
-          x = 0.5, y = 0.5, xref = 'paper', yref = 'paper',
-          showarrow = FALSE,
-          font = list(color = '#66785b', size = 14)
-        ))
-      ) %>% config(displayModeBar = FALSE))
-    }
-
-    corr_fields <- c('Area', 'Rainfall', 'Temperature', 'yeilds', 'Humidity')
-
-    corr_source <- corr_source %>%
+    corr_source <- data_clean %>%
       filter(if_all(all_of(corr_fields), ~ !is.na(.x))) %>%
       transmute(
         Area = as.numeric(.data$Area),
         Rainfall = as.numeric(.data$Rainfall),
-        Temperature = as.numeric(.data$Temperature),
-        Yield = as.numeric(.data$yeilds),
+        Temperature = as.numeric(.data$Temp),
+        Yield = as.numeric(.data$Yield),
         Humidity = as.numeric(.data$Humidity)
       )
 
-    corr_mat <- cor(corr_source, use = 'pairwise.complete.obs')
+    if (nrow(corr_source) < 3) {
+      return(empty_plot_message('Not enough clean records for correlation analysis'))
+    }
+
     # Compute per-pair correlation, p-value, and sample count
     compute_corr_stats <- function(df) {
       m <- as.matrix(df)
@@ -185,28 +204,31 @@ server <- function(input, output, session) {
     )
   }
 
-  weather_icon <- function(code, is_day) {
-    if (is.na(code)) return("⛅")
-    if (code == 0) return(if (isTRUE(is_day == 1)) "☀️" else "🌙")
-    if (code %in% c(1, 2, 3)) return("⛅")
-    if (code %in% c(45, 48)) return("🌫️")
-    if (code %in% c(51, 53, 55, 61, 63, 65, 80, 81, 82)) return("🌧️")
-    if (code %in% c(71, 73, 75)) return("❄️")
-    if (code %in% c(95, 96, 99)) return("⛈️")
-    "⛅"
+  weather_icon_name <- function(code, is_day) {
+    if (is.na(code)) return("cloud")
+    if (code == 0) return(if (isTRUE(is_day == 1)) "sun" else "moon")
+    if (code %in% c(1, 2, 3)) return("cloud")
+    if (code %in% c(45, 48)) return("smog")
+    if (code %in% c(51, 53, 55, 61, 63, 65, 80, 81, 82)) return("cloud-rain")
+    if (code %in% c(71, 73, 75)) return("snowflake")
+    if (code %in% c(95, 96, 99)) return("bolt")
+    "cloud"
   }
 
   # Location to coordinates mapping
   location_coords <- list(
-    "New Delhi" = list(lat = 28.6139, lon = 77.2090),
-    "Mumbai" = list(lat = 19.0760, lon = 72.8777),
     "Bangalore" = list(lat = 12.9716, lon = 77.5946),
-    "Chennai" = list(lat = 13.0827, lon = 80.2707),
-    "Kolkata" = list(lat = 22.5726, lon = 88.3639),
-    "Hyderabad" = list(lat = 17.3850, lon = 78.4867),
-    "Delhi" = list(lat = 28.6139, lon = 77.2090),
-    "Pune" = list(lat = 18.5204, lon = 73.8567),
-    "All" = list(lat = 28.6139, lon = 77.2090)
+    "Chikmangaluru" = list(lat = 13.3161, lon = 75.7720),
+    "Davangere" = list(lat = 14.4644, lon = 75.9218),
+    "Gulbarga" = list(lat = 17.3297, lon = 76.8343),
+    "Hassan" = list(lat = 13.0068, lon = 76.0996),
+    "Kasaragodu" = list(lat = 12.4996, lon = 74.9869),
+    "Kodagu" = list(lat = 12.4244, lon = 75.7382),
+    "Madikeri" = list(lat = 12.4244, lon = 75.7382),
+    "Mangalore" = list(lat = 12.9141, lon = 74.8560),
+    "Mysuru" = list(lat = 12.2958, lon = 76.6394),
+    "Raichur" = list(lat = 16.2120, lon = 77.3439),
+    "All" = list(lat = 13.0068, lon = 76.0996)
   )
   
   weather_data <- reactive({
@@ -223,11 +245,6 @@ server <- function(input, output, session) {
       NULL
     })
   })
-  
-  # Load Dataset and normalize column names
-  data_clean <- read.csv('data_season.csv', stringsAsFactors = FALSE) %>%
-    rename(State = Location, Crop = Crops, Yield = yeilds, Temp = Temperature) %>%
-    rename_with(~ gsub(" ", "_", .x))
   
   # Initialize Filters
   observe({
@@ -257,13 +274,6 @@ server <- function(input, output, session) {
     ((current_val - previous_val) / previous_val) * 100
   }
   
-  # Get benchmark (national average) for current filters
-  get_benchmark <- reactive({
-    d <- data_clean %>% filter(Year == input$year_filter)
-    if(input$crop_filter != "All") d <- d %>% filter(Crop == input$crop_filter)
-    mean(d$Yield, na.rm = TRUE)
-  })
-
   # Summary Outputs with Deltas
   output$sum_yields <- renderText({
     total_yield <- suppressWarnings(sum(as.numeric(filtered()$Yield), na.rm = TRUE))
@@ -291,11 +301,11 @@ server <- function(input, output, session) {
     yoy_pct <- calculate_delta(current_yield, previous_yield)
     
     if (is.na(yoy_pct) || nrow(previous_filtered) == 0) {
-      return(div(style = "font-size: 10px; color: var(--cs-text-sub); margin-top: 3px;", "—"))
+      return(div(style = "font-size: 10px; color: var(--cs-text-sub); margin-top: 3px;", "--"))
     }
     
     badge_class <- if (yoy_pct >= 0) "delta-positive" else "delta-negative"
-    arrow <- if (yoy_pct >= 0) "↑" else "↓"
+    direction <- if (yoy_pct >= 0) "+" else "-"
     
     # Create SVG sparkline for positive/negative trend
     if (yoy_pct >= 0) {
@@ -314,18 +324,28 @@ server <- function(input, output, session) {
       class = "delta-badge",
       style = "margin-top: 4px; display: inline-flex; align-items: center;",
       class = badge_class,
-      HTML(paste0(arrow, " ", round(abs(yoy_pct), 1), "% YoY")),
+      HTML(paste0(direction, " ", round(abs(yoy_pct), 1), "% YoY")),
       sparkline
     )
   })
-    output$sum_area  <- renderText({ format(round(sum(filtered()$Area), 0), big.mark=",") })
-  output$pest_val  <- renderText({ paste0(round(sum(filtered()$Area)*0.04, 0), "L") })
-  output$fert_val  <- renderText({ paste0(round(sum(filtered()$Area)*0.11, 0), "kg") })
-  output$water_val <- renderText({ paste0(round(sum(filtered()$Area)*0.75, 0), "m³") })
+  output$sum_area <- renderText({
+    format(round(sum(filtered()$Area, na.rm = TRUE), 0), big.mark=",")
+  })
+  output$record_count <- renderText({
+    format(nrow(filtered()), big.mark = ",")
+  })
+  output$crop_count <- renderText({
+    format(dplyr::n_distinct(filtered()$Crop), big.mark = ",")
+  })
+  output$avg_yield <- renderText({
+    avg <- mean(filtered()$Yield, na.rm = TRUE)
+    if (is.nan(avg)) return("--")
+    format(round(avg, 0), big.mark = ",")
+  })
 
   output$weather_location <- renderText({
     selected <- input$loc_filter
-    if (is.null(selected) || selected == "All") "New Delhi" else selected
+    if (is.null(selected) || selected == "All") "Regional center" else selected
   })
 
   output$weather_temp <- renderText({
@@ -340,10 +360,10 @@ server <- function(input, output, session) {
     weather_code_label(w$current$weather_code)
   })
 
-  output$weather_icon <- renderText({
+  output$weather_icon <- renderUI({
     w <- weather_data()
-    if (is.null(w) || is.null(w$current$weather_code)) return("⛅")
-    weather_icon(w$current$weather_code, w$current$is_day)
+    if (is.null(w) || is.null(w$current$weather_code)) return(icon("cloud"))
+    icon(weather_icon_name(w$current$weather_code, w$current$is_day))
   })
 
   output$weather_wind <- renderText({
@@ -361,41 +381,37 @@ server <- function(input, output, session) {
   # Prediction reactive/result holder
   pred_result <- reactiveVal(list(crop = "--", conf = NA))
 
-  # Crop emoji/image mapping
-  crop_emoji <- function(crop_name) {
-    emojis <- list(
-      "rice" = "🌾",
-      "maize" = "🌽",
-      "wheat" = "🌾",
-      "chickpea" = "🫘",
-      "kidneybeans" = "🫘",
-      "pigeonpeas" = "🫘",
-      "mothbeans" = "🫘",
-      "mungbean" = "🫘",
-      "blackgram" = "🫘",
-      "lentil" = "🫘",
-      "pomegranate" = "🍎",
-      "banana" = "🍌",
-      "mango" = "🥭",
-      "grapes" = "🍇",
-      "watermelon" = "🍈",
-      "papaya" = "🧡",
-      "orange" = "🍊",
-      "apple" = "🍎",
-      "coconut" = "🥥",
-      "cotton" = "🤎",
-      "sugarcane" = "🌾",
-      "tobacco" = "🚬"
+  # Short crop badge used in the recommendation hero.
+  crop_badge <- function(crop_name) {
+    badges <- list(
+      "rice" = "RC",
+      "maize" = "MZ",
+      "wheat" = "WH",
+      "chickpea" = "CP",
+      "kidneybeans" = "KB",
+      "pigeonpeas" = "PP",
+      "mothbeans" = "MB",
+      "mungbean" = "MN",
+      "blackgram" = "BG",
+      "lentil" = "LN",
+      "pomegranate" = "PG",
+      "banana" = "BN",
+      "mango" = "MG",
+      "grapes" = "GR",
+      "watermelon" = "WM",
+      "papaya" = "PY",
+      "orange" = "OR",
+      "apple" = "AP",
+      "coconut" = "CO",
+      "cotton" = "CT",
+      "sugarcane" = "SC",
+      "tobacco" = "TB"
     )
-    emoji <- emojis[[tolower(as.character(crop_name))]]
-    if (is.null(emoji) || is.na(emoji)) {
-      "🌱"
-    } else {
-      emoji
-    }
+    badge <- badges[[tolower(as.character(crop_name))]]
+    if (is.null(badge) || is.na(badge)) "CR" else badge
   }
 
-  output$pred_crop_image <- renderText({ crop_emoji(pred_result()$crop) })
+  output$pred_crop_image <- renderText({ crop_badge(pred_result()$crop) })
 
   observe({
     # Build input row for model
@@ -500,8 +516,8 @@ server <- function(input, output, session) {
     vals <- c(input$input_n/150, input$input_p/150, input$input_k/150, input$input_temp/50, input$input_hum/100, input$input_ph/14, input$input_rain/500)
     ideal <- c(0.6, 0.6, 0.6, 0.5, 0.7, 0.5, 0.4)
     cats <- c('N','P','K','Temp','Hum','pH','Rain')
-    plot_ly(type = 'scatterpolar', r = ideal, theta = cats, fill = 'toself', name = 'Ideal Profile') %>%
-      add_trace(r = vals, theta = cats, fill = 'toself', name = 'Your Soil') %>%
+    plot_ly(type = 'scatterpolar', mode = 'lines+markers', r = ideal, theta = cats, fill = 'toself', name = 'Reference Profile') %>%
+      add_trace(r = vals, theta = cats, mode = 'lines+markers', fill = 'toself', name = 'Selected Inputs') %>%
       layout(
         polar = list(radialaxis = list(visible = TRUE, range = c(0,1), tickfont = list(color = '#2b4027'))),
         showlegend = TRUE,
@@ -514,20 +530,23 @@ server <- function(input, output, session) {
 
   # Graph Outputs
   output$state_map <- renderPlotly({
-    res <- filtered() %>% group_by(State) %>% summarise(Val = sum(Yield)) %>% arrange(desc(Val))
+    res <- filtered() %>% group_by(State) %>% summarise(Val = sum(Yield, na.rm = TRUE), .groups = 'drop') %>% arrange(desc(Val))
     plot_ly(res, x = ~Val, y = ~reorder(State, Val), type = 'bar', orientation = 'h', marker = list(color = '#10b981')) %>%
       layout(xaxis = list(title = "Total Yield"), yaxis = list(title = ""), margin = list(l=100), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
   })
 
-  # Combined chart: switch between Production by Location and Seasonal Distribution
+  # Combined chart: switch between yield by location and yield by season.
   output$combined_chart <- renderPlotly({
     req(filtered())
     sel <- input$combined_chart_select
-    if(is.null(sel)) sel <- "Production by Location"
-    if(sel == "Production by Location"){
-      res <- filtered() %>% group_by(State) %>% summarise(Val = sum(Yield), .groups = 'drop') %>% arrange(desc(Val))
-      bench <- get_benchmark()
-      # Pre-format the delta as a string to avoid Plotly hovertemplate errors
+    if(is.null(sel)) sel <- "Yield by Location"
+    if(sel %in% c("Yield by Location", "Production by Location")){
+      res <- filtered() %>% group_by(State) %>% summarise(Val = sum(Yield, na.rm = TRUE), .groups = 'drop') %>% arrange(desc(Val))
+      if (nrow(res) == 0 || all(is.na(res$Val))) {
+        return(empty_plot_message("No yield records for the selected filters"))
+      }
+
+      bench <- mean(res$Val, na.rm = TRUE)
       res$DeltaPct <- paste0(format(round((res$Val - bench) / bench * 100, 1), nsmall = 1), "%")
       
       plot_ly(
@@ -541,25 +560,37 @@ server <- function(input, output, session) {
         hovertemplate = paste0(
           '<b>%{y}</b><br>',
           'Total Yield: %{x:,.0f}<br>',
-          'vs National Avg: %{customdata}<extra></extra>'
+          'vs Selected-Location Avg: %{customdata}<extra></extra>'
         ),
         customdata = ~DeltaPct
       ) %>%
-        add_segments(x = bench, xend = bench, y = -0.5, yend = nrow(res) + 0.5,
-                     line = list(color = 'rgba(100, 116, 139, 0.5)', width = 2, dash = 'dash'),
-                     name = 'National Avg',
-                     hovertemplate = 'National Average: %{x:,.0f}<extra></extra>',
-                     showlegend = TRUE) %>%
         layout(
           xaxis = list(title = "Total Yield"),
           yaxis = list(title = ""),
           margin = list(l=100),
           paper_bgcolor = 'rgba(0,0,0,0)',
           plot_bgcolor = 'rgba(0,0,0,0)',
-          hovermode = 'closest'
+          hovermode = 'closest',
+          shapes = list(list(
+            type = "line",
+            x0 = bench, x1 = bench,
+            y0 = 0, y1 = 1,
+            xref = "x", yref = "paper",
+            line = list(color = "rgba(100, 116, 139, 0.65)", width = 2, dash = "dash")
+          )),
+          annotations = list(list(
+            x = bench, y = 1.04,
+            xref = "x", yref = "paper",
+            text = "selected avg",
+            showarrow = FALSE,
+            font = list(size = 11, color = "#64748b")
+          ))
         )
     } else {
-      res <- filtered() %>% group_by(State, Season) %>% summarise(Val = sum(Yield), .groups = 'drop') %>% head(20)
+      res <- filtered() %>% group_by(State, Season) %>% summarise(Val = sum(Yield, na.rm = TRUE), .groups = 'drop') %>% arrange(State, Season)
+      if (nrow(res) == 0) {
+        return(empty_plot_message("No seasonal records for the selected filters"))
+      }
       plot_ly(
         source = "combined_chart_seasonal",
         res, 
@@ -632,7 +663,7 @@ server <- function(input, output, session) {
   })
 
   output$top10_bar <- renderPlotly({
-    res <- filtered() %>% group_by(State) %>% summarise(Val = sum(Yield)) %>% arrange(desc(Val)) %>% head(10)
+    res <- filtered() %>% group_by(State) %>% summarise(Val = sum(Yield, na.rm = TRUE), .groups = 'drop') %>% arrange(desc(Val)) %>% head(10)
     plot_ly(res, x = ~reorder(State, -Val), y = ~Val, type = 'bar', marker = list(color = '#f59e0b')) %>%
       layout(xaxis = list(title = ""), yaxis = list(title = "Yield"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
   })
@@ -641,12 +672,14 @@ server <- function(input, output, session) {
     req(filtered())
     sel <- input$efficiency_var_select
     d <- filtered()
-    if(is.null(sel)) sel <- "Soil Type"
+    if(is.null(sel)) sel <- "Crop Share"
 
-    if(sel == "Crop Distribution"){
-      # Pie chart of crop distribution with rich tooltips
+    if(sel %in% c("Crop Share", "Crop Distribution")){
       crop_dist <- d %>% group_by(Crop) %>% summarise(Val = sum(Yield, na.rm = TRUE), Count = n(), .groups = 'drop') %>% arrange(desc(Val))
-      total_yield <- sum(crop_dist$Val)
+      total_yield <- sum(crop_dist$Val, na.rm = TRUE)
+      if (nrow(crop_dist) == 0 || is.na(total_yield) || total_yield <= 0) {
+        return(empty_plot_message('No crop records for the selected filters'))
+      }
       crop_dist$Pct <- round(crop_dist$Val / total_yield * 100, 1)
       
       plot_ly(
@@ -660,11 +693,11 @@ server <- function(input, output, session) {
         customdata = ~Pct
       ) %>%
         layout(
-          title = list(text = "Crop Distribution by Total Yield"),
+          title = list(text = "Crop Share by Total Yield"),
           paper_bgcolor = 'rgba(0,0,0,0)',
           plot_bgcolor = 'rgba(0,0,0,0)'
         )
-    } else if(sel == "Soil Type"){
+    } else if(sel %in% c("Yield by Soil Type", "Soil Type")){
       soil_vals <- d[["Soil_type"]]
       yield_vals <- d[["Yield"]]
       crop_names <- d[["Crop"]]
@@ -686,7 +719,12 @@ server <- function(input, output, session) {
           paper_bgcolor = 'rgba(0,0,0,0)',
           plot_bgcolor = 'rgba(0,0,0,0)'
         )
-    } else if(sel == "Temperature"){
+    } else if(sel %in% c("Yield vs Temperature", "Temperature")){
+      d <- d %>% filter(!is.na(.data$Temp), !is.na(.data$Yield))
+      if (nrow(d) == 0) {
+        return(empty_plot_message('No valid temperature records for the selected filters'))
+      }
+
       plot_ly(
         d,
         x = ~Temp,
@@ -729,7 +767,7 @@ server <- function(input, output, session) {
   })
 
   output$seasonal_stack <- renderPlotly({
-    res <- filtered() %>% group_by(State, Season) %>% summarise(Val = sum(Yield)) %>% head(20)
+    res <- filtered() %>% group_by(State, Season) %>% summarise(Val = sum(Yield, na.rm = TRUE), .groups = 'drop') %>% arrange(State, Season)
     plot_ly(res, x = ~State, y = ~Val, color = ~Season, type = 'bar') %>%
       layout(barmode = 'stack', xaxis = list(title = ""), yaxis = list(title = "Yield"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
   })

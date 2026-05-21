@@ -1,125 +1,53 @@
-# Data Quality Check for India Crop Dashboard
-# This script validates the datasets before building the Shiny app
-
-library(dplyr)
-library(tidyr)
-
-clean_season_data <- function(path) {
-	read.csv(path, stringsAsFactors = FALSE, na.strings = c('', 'NA'), check.names = FALSE) %>%
-		mutate(across(where(is.character), ~ trimws(.x))) %>%
-		mutate(across(where(is.character), ~ na_if(.x, '')))
-}
-
 cat("\n========================================\n")
 cat("DATA QUALITY REPORT\n")
 cat("========================================\n\n")
 
-# Load crop_production.csv
-cat("1. CROP PRODUCTION DATA (crop_production.csv)\n")
+season_data <- read.csv("data_season.csv", stringsAsFactors = FALSE, check.names = FALSE)
+recommendation_data <- read.csv("Crop_recommendation.csv", stringsAsFactors = FALSE)
+
+cat("1. SEASONAL YIELD DATA (data_season.csv)\n")
 cat("------------------------------------------\n")
-crop_prod <- read.csv('crop_production.csv', stringsAsFactors = FALSE)
+cat(sprintf("Rows: %d\n", nrow(season_data)))
+cat(sprintf("Columns: %s\n", paste(names(season_data), collapse = ", ")))
+cat(sprintf("Year range: %d - %d\n", min(season_data$Year, na.rm = TRUE), max(season_data$Year, na.rm = TRUE)))
+cat(sprintf("Locations: %d\n", length(unique(season_data$Location))))
+cat(sprintf("Crops: %d\n", length(unique(season_data$Crops))))
+cat(sprintf("Seasons: %s\n", paste(sort(unique(season_data$Season)), collapse = ", ")))
 
-cat(sprintf("Total rows: %d\n", nrow(crop_prod)))
-cat(sprintf("Columns: %s\n", paste(names(crop_prod), collapse = ", ")))
+soil_missing <- sum(is.na(season_data[["Soil type"]]) | trimws(season_data[["Soil type"]]) == "")
+temp_invalid <- sum(season_data$Temperature < -10 | season_data$Temperature > 60, na.rm = TRUE)
 
-# State coverage
-states <- unique(trimws(crop_prod$State_Name))
-cat(sprintf("\nUnique States: %d\n", length(states)))
-cat(sprintf("States: %s\n", paste(head(states, 10), collapse = ", "), "...\n"))
+cat(sprintf("Missing soil type values: %d\n", soil_missing))
+cat(sprintf("Temperature values outside -10C to 60C: %d\n", temp_invalid))
+cat("\nNumeric summaries:\n")
+print(summary(season_data[, c("Area", "Rainfall", "Temperature", "yeilds", "Humidity", "price")]))
 
-# Crop coverage
-crops <- unique(trimws(crop_prod$Crop))
-cat(sprintf("\nUnique Crops: %d\n", length(crops)))
-cat(sprintf("Sample crops: %s\n", paste(head(crops, 10), collapse = ", ")))
+cat("\n2. CROP RECOMMENDATION DATA (Crop_recommendation.csv)\n")
+cat("------------------------------------------------------\n")
+cat(sprintf("Rows: %d\n", nrow(recommendation_data)))
+cat(sprintf("Columns: %s\n", paste(names(recommendation_data), collapse = ", ")))
+cat(sprintf("Crop labels: %d\n", length(unique(recommendation_data$label))))
+cat(sprintf("Labels: %s\n", paste(sort(unique(recommendation_data$label)), collapse = ", ")))
+cat("\nNumeric summaries:\n")
+print(summary(recommendation_data[, c("N", "P", "K", "temperature", "humidity", "ph", "rainfall")]))
 
-# Year range
-years <- range(crop_prod$Crop_Year)
-cat(sprintf("\nYear Range: %d - %d\n", years[1], years[2]))
+cat("\n3. MODEL FILE\n")
+cat("-------------\n")
+if (file.exists("model_rf.RDS")) {
+  model <- readRDS("model_rf.RDS")
+  cat(sprintf("Model class: %s\n", paste(class(model), collapse = ", ")))
+  if ("randomForest" %in% class(model)) {
+    cat(sprintf("Trees: %d\n", model$ntree))
+    cat(sprintf("Classes: %d\n", length(model$classes)))
+    cat(sprintf("OOB error: %.4f\n", tail(model$err.rate[, "OOB"], 1)))
+  }
+} else {
+  cat("model_rf.RDS not found\n")
+}
 
-# Season breakdown
-seasons <- unique(trimws(crop_prod$Season))
-cat(sprintf("\nSeasons: %s\n", paste(seasons, collapse = ", ")))
-
-# Data completeness
-cat(sprintf("\nMissing Values:\n"))
-cat(sprintf("  State_Name: %d\n", sum(is.na(crop_prod$State_Name))))
-cat(sprintf("  Crop: %d\n", sum(is.na(crop_prod$Crop))))
-cat(sprintf("  Area: %d\n", sum(is.na(crop_prod$Area))))
-cat(sprintf("  Production: %d\n", sum(is.na(crop_prod$Production))))
-
-# Area and Production stats
-cat(sprintf("\nArea (hectares) - Summary:\n"))
-print(summary(crop_prod$Area))
-
-cat(sprintf("\nProduction (tonnes) - Summary:\n"))
-print(summary(crop_prod$Production))
-
-# Calculate yield
-cat(sprintf("\n\nCalculated Yield (Production / Area):\n"))
-crop_prod$Yield <- crop_prod$Production / crop_prod$Area
-cat(sprintf("  Min: %.2f tonnes/hectare\n", min(crop_prod$Yield, na.rm=TRUE)))
-cat(sprintf("  Max: %.2f tonnes/hectare\n", max(crop_prod$Yield, na.rm=TRUE)))
-cat(sprintf("  Mean: %.2f tonnes/hectare\n", mean(crop_prod$Yield, na.rm=TRUE)))
-
-# Sample data
-cat("\n\nSample rows (first 5):\n")
-print(head(crop_prod[, c("State_Name", "Crop_Year", "Crop", "Area", "Production")], 5))
-
-cat("\n\n2. SEASONAL DATA (data_season.csv)\n")
-cat("------------------------------------------\n")
-data_season <- clean_season_data('data_season.csv')
-
-cat(sprintf("CSV lines (including header): %d\n", length(readLines('data_season.csv', warn = FALSE))))
-cat(sprintf("Data rows: %d\n", nrow(data_season)))
-cat(sprintf("Columns: %s\n", paste(names(data_season), collapse = ", ")))
-
-locations <- unique(data_season$Location)
-cat(sprintf("\nUnique Locations: %d\n", length(locations)))
-cat(sprintf("Locations: %s\n", paste(head(locations, 10), collapse = ", ")))
-
-cat(sprintf("\nYear Range: %d - %d\n", min(data_season$Year), max(data_season$Year)))
-cat(sprintf("Rows with any missing value: %d\n", sum(!complete.cases(data_season))))
-cat(sprintf("Missing values by column: %s\n", paste(sprintf('%s=%d', names(colSums(is.na(data_season))), colSums(is.na(data_season))), collapse = ', ')))
-
-correlation_fields <- c('Area', 'Rainfall', 'Temperature', 'yeilds', 'Humidity')
-correlation_ready <- data_season[complete.cases(data_season[, correlation_fields]), correlation_fields]
-cat(sprintf("Correlation-ready rows: %d\n", nrow(correlation_ready)))
-
-cat("\n\n3. CROP YIELD DATA (crop_yield.csv)\n")
-cat("------------------------------------------\n")
-crop_yield <- read.csv('crop_yield.csv', stringsAsFactors = FALSE)
-
-cat(sprintf("Total rows: %d\n", nrow(crop_yield)))
-cat(sprintf("Columns: %s\n", paste(names(crop_yield), collapse = ", ")))
-
-regions <- unique(crop_yield$Region)
-cat(sprintf("\nUnique Regions: %d\n", length(regions)))
-cat(sprintf("Regions: %s\n", paste(regions, collapse = ", ")))
-
-yield_crops <- unique(crop_yield$Crop)
-cat(sprintf("\nUnique Crops: %d\n", length(yield_crops)))
-cat(sprintf("Crops: %s\n", paste(head(yield_crops, 10), collapse = ", ")))
-
-cat("\n\n4. DATA INTEGRATION ASSESSMENT\n")
-cat("------------------------------------------\n")
-
-# Check overlap between crop_production and crop_yield crops
-overlap_crops <- intersect(tolower(crops), tolower(yield_crops))
-cat(sprintf("Crop overlap between datasets: %d crops\n", length(overlap_crops)))
-cat(sprintf("Samples: %s\n", paste(head(overlap_crops, 5), collapse = ", ")))
-
-# Check if we can calculate yields
-cat(sprintf("\n✓ Can calculate Yield from crop_production: YES (Production / Area)\n"))
-cat(sprintf("✓ Can link data_season to crop_production: PARTIAL (need location/state mapping)\n"))
-cat(sprintf("✓ Can link crop_yield: PARTIAL (different regions/structure)\n"))
-
-cat("\n\nRECOMMENDATIONS FOR DASHBOARD:\n")
-cat("========================================\n")
-cat("1. PRIMARY SOURCE: crop_production.csv (most complete, state-level)\n")
-cat("2. USE CALCULATED YIELD: Production / Area from crop_production\n")
-cat("3. ENHANCEMENT: Merge data_season for climate factors (if location mapping available)\n")
-cat("4. STATE COVERAGE: All major Indian states available\n")
-cat("5. TEMPORAL: 20+ years of data for trend analysis\n")
-cat("6. PRODUCTION MIX: Can analyze seasonal split (Kharif/Rabi)\n")
+cat("\nNotes:\n")
+cat("- Temperature values outside -10C to 60C are treated as invalid in the app's temperature and correlation views.\n")
+cat("- The recommendation dataset is the published Kaggle Crop Recommendation Dataset.\n")
+cat("- The seasonal file is used for dashboard exploration and is linked from the project repository.\n")
 
 cat("\n========================================\n")
