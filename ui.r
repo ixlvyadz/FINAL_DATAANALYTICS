@@ -22,7 +22,7 @@ ui <- dashboardPage(
       tags$link(
         rel = "stylesheet",
         type = "text/css",
-        href = "https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800;900&display=swap"
+        href = "https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400..900;1,400..900&family=Poppins:wght@400;500;600;700;800;900&display=swap"
       ),
       tags$style(HTML('
         @font-face {
@@ -31,6 +31,23 @@ ui <- dashboardPage(
           font-weight: 400;
           font-style: normal;
           font-display: swap;
+        }
+
+        .field-metric-value,
+        .field-metric-value *,
+        .field-metric-change,
+        .field-metric-change *,
+        .field-record-row,
+        .field-record-row *,
+        .field-temp,
+        .field-temp *,
+        .field-weather-details,
+        .field-weather-details *,
+        .field-dash-card-value,
+        .field-dash-card-value *,
+        .field-dash-stat-val,
+        .field-dash-stat-val * {
+          font-family: "Playfair Display", Georgia, serif !important;
         }
 
         :root {
@@ -108,17 +125,38 @@ ui <- dashboardPage(
         }
 
         .field-screen {
+          position: relative;
+          z-index: 1;
           min-height: 100vh;
           padding: clamp(18px, 2.4vw, 34px);
           color: var(--field-cream);
-          background:
-            radial-gradient(circle at 88% 4%, rgba(244, 216, 115, 0.25), transparent 25%),
-            radial-gradient(circle at 10% 0%, rgba(178, 203, 103, 0.20), transparent 28%),
-            linear-gradient(145deg, #0d4324 0%, #0b351d 44%, #062817 100%);
+          background: #062817;
           overflow: hidden;
         }
 
+        .field-screen::before {
+          content: "";
+          position: absolute;
+          top: 0;
+          left: 0;
+          right: 0;
+          height: 100vh;
+          z-index: 0;
+          pointer-events: none;
+          background:
+            radial-gradient(circle at 88% 4%, rgba(244, 216, 115, 0.20), transparent 25%),
+            radial-gradient(circle at 10% 0%, rgba(178, 203, 103, 0.15), transparent 28%),
+            linear-gradient(to bottom,
+              rgba(6, 40, 23, 0) 0%,
+              rgba(6, 40, 23, 0.8) 28vw,
+              #062817 40vw
+            ),
+            url("bg-field.png") no-repeat center top / 100% auto;
+        }
+
         .field-shell {
+          position: relative;
+          z-index: 2;
           max-width: 1640px;
           margin: 0 auto;
           display: grid;
@@ -127,8 +165,7 @@ ui <- dashboardPage(
             ". badge ."
             "left hero right"
             "actions actions actions"
-            "content content content"
-            "footer footer footer";
+            "content content content";
           gap: clamp(18px, 2vw, 30px);
           align-items: stretch;
         }
@@ -193,27 +230,131 @@ ui <- dashboardPage(
         }
         .field-hero .field-year {
           display: block;
-          margin-top: clamp(20px, 3vw, 46px);
+          margin-top: clamp(4px, 0.8vw, 12px);
           color: var(--field-cream);
-          font-family: "Crows Ink", "Cooper Black", "Arial Rounded MT Bold", Georgia, "Times New Roman", serif !important;
-          font-size: clamp(70px, 8.2vw, 150px);
+          font-family: "Playfair Display", Georgia, serif !important;
+          font-size: clamp(40px, 4.5vw, 80px);
           line-height: 0.84;
-          font-weight: 900;
-          letter-spacing: -0.045em;
+          font-weight: 500;
+          letter-spacing: -0.02em !important;
           text-shadow: 0 10px 28px rgba(0, 0, 0, 0.28);
         }
         .field-divider,
         .field-landscape { display: none; }
         .field-hero p {
           max-width: 920px;
-          margin: clamp(34px, 4vw, 70px) auto 0;
+          margin: clamp(12px, 1.5vw, 24px) auto 0;
           color: var(--field-cream);
           font-family: Georgia, "Times New Roman", serif !important;
-          font-size: clamp(24px, 2.45vw, 44px);
+          font-size: clamp(12px, 1.225vw, 22px);
           line-height: 1.28;
           letter-spacing: -0.02em;
           text-shadow: 0 8px 24px rgba(0, 0, 0, 0.28);
         }
+
+        .field-card-desc {
+          margin-top: clamp(8px, 1vw, 16px);
+          color: rgba(255, 248, 232, 0.82);
+          font-family: Georgia, serif !important;
+          font-size: clamp(12px, 1vw, 15px);
+          line-height: 1.45;
+          text-align: center;
+          padding: 0 10px;
+        }
+
+        .field-dash-metrics {
+          display: grid;
+          grid-template-columns: repeat(4, 1fr);
+          gap: clamp(12px, 1.5vw, 20px);
+          margin-top: clamp(16px, 2vw, 24px);
+        }
+
+        .field-dash-card {
+          position: relative;
+          overflow: hidden;
+          background: rgba(4, 28, 14, 0.42);
+          border: 2px solid rgba(255, 248, 232, 0.6);
+          border-radius: 20px;
+          padding: 16px 20px;
+          color: var(--field-cream);
+          box-shadow: 0 10px 24px rgba(4, 23, 12, 0.15);
+          display: flex;
+          flex-direction: column;
+          justify-content: center;
+          min-height: 120px;
+        }
+
+        .field-dash-card-title,
+        .field-dash-card-title * {
+          margin: 0 0 6px 0;
+          font-family: "Crows Ink", "Cooper Black", Georgia, serif !important;
+          font-size: 13px;
+          letter-spacing: 0.05em;
+          text-transform: uppercase;
+          color: #c0d367;
+          opacity: 0.95;
+          text-align: center;
+        }
+
+        .field-dash-card-value {
+          font-size: clamp(22px, 2vw, 32px);
+          font-weight: 500;
+          line-height: 1.1;
+          color: var(--field-cream);
+        }
+
+        .field-dash-stats-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 6px;
+          text-align: center;
+        }
+
+        .field-dash-stat-val {
+          display: block;
+          font-size: clamp(15px, 1.3vw, 20px);
+          font-weight: 500;
+          line-height: 1.1;
+        }
+
+        .field-dash-stat-lbl {
+          display: block;
+          margin-top: 3px;
+          font-size: 10px;
+          letter-spacing: 0.06em;
+          text-transform: uppercase;
+          color: rgba(255, 248, 232, 0.66);
+        }
+
+        .field-dash-weather {
+          display: grid;
+          grid-template-columns: 1fr 1fr;
+          gap: 8px;
+          align-items: center;
+          text-align: center;
+        }
+
+        .field-dash-weather-main {
+          color: var(--field-cream);
+          font-size: clamp(18px, 1.7vw, 28px);
+          font-weight: 500;
+        }
+
+        .field-dash-weather-meta {
+          color: rgba(255, 248, 232, 0.78);
+          font-size: 12px;
+          line-height: 1.35;
+        }
+
+        .field-dash-card .delta-badge,
+        .field-dash-card .delta-badge * {
+          margin-top: 0 !important;
+          color: var(--field-cream) !important;
+          font-family: "Playfair Display", Georgia, serif !important;
+          background: transparent !important;
+          box-shadow: none !important;
+        }
+        .field-dash-card .trend-sparkline { display: none; }
 
         .field-card {
           position: relative;
@@ -241,7 +382,7 @@ ui <- dashboardPage(
           font-family: "Crows Ink", "Cooper Black", "Arial Rounded MT Bold", Georgia, "Times New Roman", serif !important;
           font-size: clamp(22px, 2vw, 34px);
           font-weight: 900;
-          letter-spacing: -0.045em;
+          letter-spacing: 0.05em;
           text-align: center;
         }
         .field-card-head h2 .shiny-text-output {
@@ -256,7 +397,6 @@ ui <- dashboardPage(
         .field-metric-value {
           display: block;
           color: var(--field-cream);
-          font-family: Georgia, "Times New Roman", serif !important;
           font-size: clamp(36px, 3vw, 56px);
           font-weight: 500;
           letter-spacing: -0.045em;
@@ -265,7 +405,6 @@ ui <- dashboardPage(
         .field-metric-change {
           margin-top: 18px;
           color: var(--field-cream);
-          font-family: Georgia, "Times New Roman", serif !important;
           font-size: clamp(22px, 1.9vw, 34px);
           font-weight: 500;
         }
@@ -281,7 +420,6 @@ ui <- dashboardPage(
         .field-record-row {
           display: block;
           color: var(--field-cream);
-          font-family: Georgia, "Times New Roman", serif !important;
           font-size: clamp(18px, 1.45vw, 27px);
         }
         .field-record-row i { display: none; }
@@ -301,7 +439,6 @@ ui <- dashboardPage(
         .field-temp {
           display: block;
           color: var(--field-cream);
-          font-family: Georgia, "Times New Roman", serif !important;
           font-size: clamp(42px, 3.4vw, 62px);
           letter-spacing: -0.08em;
           line-height: 0.95;
@@ -311,7 +448,7 @@ ui <- dashboardPage(
           display: block;
           margin-top: 8px;
           color: var(--field-cream);
-          font-family: "Cooper Black", "Arial Rounded MT Bold", Georgia, "Times New Roman", serif !important;
+          font-family: "Crows Ink", "Cooper Black", "Arial Rounded MT Bold", Georgia, "Times New Roman", serif !important;
           font-size: 18px;
           font-weight: 900;
         }
@@ -319,7 +456,6 @@ ui <- dashboardPage(
           display: grid;
           gap: 8px;
           color: var(--field-cream);
-          font-family: Georgia, "Times New Roman", serif !important;
           font-size: clamp(14px, 1.05vw, 18px);
         }
         .field-weather-details i { display: none; }
@@ -364,11 +500,11 @@ ui <- dashboardPage(
         .field-action-title {
           margin: 0;
           color: inherit;
-          font-family: "Cooper Black", "Arial Rounded MT Bold", Georgia, "Times New Roman", serif !important;
+          font-family: "Crows Ink", "Cooper Black", "Arial Rounded MT Bold", Georgia, "Times New Roman", serif !important;
           font-size: clamp(22px, 2.25vw, 38px);
           line-height: 1.02;
           font-weight: 900;
-          letter-spacing: -0.04em;
+          letter-spacing: 0.05em;
           text-transform: uppercase;
           text-align: center;
         }
@@ -470,28 +606,6 @@ ui <- dashboardPage(
           border-radius: 8px;
         }
 
-        .field-footer-strip {
-          grid-area: footer;
-          display: grid;
-          grid-template-columns: repeat(4, 1fr);
-          gap: 14px;
-          color: #f4f3df;
-          padding: 6px 16px 0;
-        }
-        .field-footer-item {
-          display: flex;
-          align-items: center;
-          justify-content: center;
-          gap: 12px;
-          min-height: 54px;
-          font-size: 15px;
-          font-weight: 650;
-          text-shadow: 0 1px 12px rgba(0,0,0,0.55);
-          border-right: 2px solid rgba(227, 214, 130, 0.35);
-        }
-        .field-footer-item:last-child { border-right: 0; }
-        .field-footer-item i { color: #c0d367; font-size: 24px; }
-
         .irs--shiny .irs-line {
           top: 24px;
           height: 10px;
@@ -556,8 +670,7 @@ ui <- dashboardPage(
               "left"
               "right"
               "actions"
-              "content"
-              "footer";
+              "content";
           }
           .field-left,
           .field-right {
@@ -573,14 +686,18 @@ ui <- dashboardPage(
           .field-left,
           .field-right,
           .field-charts,
-          .field-footer-strip {
+          .field-dash-metrics {
+            grid-template-columns: 1fr;
+          }
+          .field-dash-weather {
             grid-template-columns: 1fr;
           }
           .field-chart-card.wide { grid-column: auto; }
           .field-weather-data { grid-template-columns: 1fr; }
-          .field-footer-item {
-            justify-content: flex-start;
-            border-right: 0;
+        }
+        @media (max-width: 1220px) and (min-width: 851px) {
+          .field-dash-metrics {
+            grid-template-columns: repeat(2, 1fr);
           }
         }
       ')),
@@ -630,27 +747,28 @@ ui <- dashboardPage(
           tags$article(class = "field-card",
             div(class = "field-icon-bubble", icon("wheat-awn")),
             tags$header(class = "field-card-head",
-              h2("Total Yield")
+              h2("Global Recorded Yield")
             ),
             div(class = "field-metric-body",
-              span(class = "field-metric-value", textOutput("sum_yields", inline = TRUE)),
-              div(class = "field-metric-change", uiOutput("yoy_badge"))
+              span(class = "field-metric-value", "73.45M"),
+              div(class = "field-card-desc", "Cumulative production recorded in South India districts.")
             )
           ),
           tags$article(class = "field-card",
             div(class = "field-icon-bubble", icon("map")),
             tags$header(class = "field-card-head",
-              h2("Total Area (ha)")
+              h2("Total Farmland")
             ),
             div(class = "field-metric-body",
-              span(class = "field-metric-value", textOutput("sum_area", inline = TRUE))
+              span(class = "field-metric-value", "29.46M ha"),
+              div(class = "field-card-desc", "Total historical cultivated area monitored in this explorer.")
             )
           )
         ),
 
         tags$section(class = "field-hero",
           div(class = "field-hero-copy",
-            h1("Crop Yield Patterns", span(class = "field-year", "2004-2019")),
+            h1(HTML('<span style="font-size: 1.3em; font-family: inherit !important;">C</span>rop <span style="font-size: 1.3em; font-family: inherit !important;">Y</span>ield <span style="font-size: 1.3em; font-family: inherit !important;">P</span>atterns'), span(class = "field-year", "2004-2019")),
             div(class = "field-divider", icon("seedling")),
             p("Compare recorded yield, cultivated area, season, crop, and weather-related factors across selected South India locations.")
           ),
@@ -659,33 +777,23 @@ ui <- dashboardPage(
 
         tags$aside(class = "field-right",
           tags$article(class = "field-card",
-            div(class = "field-icon-bubble", icon("filter")),
+            div(class = "field-icon-bubble", icon("file-lines")),
             tags$header(class = "field-card-head",
-              h2("Filtered Records")
+              h2("Verified Records")
             ),
-            div(class = "field-records-body",
-              div(class = "field-record-row", icon("file-lines"), span(textOutput("record_count", inline = TRUE), " Records")),
-              div(class = "field-record-row", icon("leaf"), span(textOutput("crop_count", inline = TRUE), " Crops")),
-              div(class = "field-record-row", icon("chart-column"), span(textOutput("avg_yield", inline = TRUE), " Avg Yield"))
+            div(class = "field-metric-body",
+              span(class = "field-metric-value", "3,158"),
+              div(class = "field-card-desc", "Fully validated, high-fidelity seasonal crop data observations.")
             )
           ),
           tags$article(class = "field-card",
+            div(class = "field-icon-bubble", icon("location-dot")),
             tags$header(class = "field-card-head",
-              icon("location-dot"),
-              h2(textOutput("weather_location", inline = TRUE))
+              h2("Coverage Area")
             ),
-            div(class = "field-weather-body",
-              div(class = "field-weather-icon-panel", uiOutput("weather_icon")),
-              div(class = "field-weather-data",
-                div(
-                  span(class = "field-temp", textOutput("weather_temp", inline = TRUE)),
-                  span(class = "field-condition", textOutput("weather_desc", inline = TRUE))
-                ),
-                div(class = "field-weather-details",
-                  span(icon("wind"), textOutput("weather_wind", inline = TRUE)),
-                  span(icon("droplet"), textOutput("weather_humidity", inline = TRUE))
-                )
-              )
+            div(class = "field-metric-body",
+              span(class = "field-metric-value", "11 Districts"),
+              div(class = "field-card-desc", "Tracking primary agricultural centers across South India zones.")
             )
           )
         ),
@@ -732,6 +840,49 @@ ui <- dashboardPage(
                 div(selectInput("loc_filter", "Location", choices = "All")),
                 div(selectInput("crop_filter", "Crop", choices = "All")),
                 div(selectInput("season_filter", "Season", choices = "All"))
+              ),
+              div(class = "field-dash-metrics",
+                div(class = "field-dash-card",
+                  p(class = "field-dash-card-title", "Total Yield"),
+                  div(style = "display: flex; align-items: baseline; gap: 8px; justify-content: center; flex-wrap: wrap;",
+                    span(class = "field-dash-card-value", textOutput("sum_yields", inline = TRUE)),
+                    uiOutput("yoy_badge")
+                  )
+                ),
+                div(class = "field-dash-card",
+                  p(class = "field-dash-card-title", "Total Area"),
+                  div(style = "display: flex; align-items: baseline; justify-content: center;",
+                    span(class = "field-dash-card-value", textOutput("sum_area", inline = TRUE))
+                  )
+                ),
+                div(class = "field-dash-card",
+                  p(class = "field-dash-card-title", "Filtered Stats"),
+                  div(class = "field-dash-stats-grid",
+                    div(
+                      span(class = "field-dash-stat-val", textOutput("record_count", inline = TRUE)),
+                      span(class = "field-dash-stat-lbl", "Records")
+                    ),
+                    div(
+                      span(class = "field-dash-stat-val", textOutput("crop_count", inline = TRUE)),
+                      span(class = "field-dash-stat-lbl", "Crops")
+                    ),
+                    div(
+                      span(class = "field-dash-stat-val", textOutput("avg_yield", inline = TRUE)),
+                      span(class = "field-dash-stat-lbl", "Avg Yield")
+                    )
+                  )
+                ),
+                div(class = "field-dash-card",
+                  p(class = "field-dash-card-title", textOutput("weather_location", inline = TRUE)),
+                  div(class = "field-dash-weather",
+                    div(class = "field-dash-weather-main", textOutput("weather_temp", inline = TRUE)),
+                    div(class = "field-dash-weather-meta",
+                      div(textOutput("weather_desc", inline = TRUE)),
+                      div(textOutput("weather_wind", inline = TRUE)),
+                      div(textOutput("weather_humidity", inline = TRUE))
+                    )
+                  )
+                )
               ),
               tags$section(id = "field_charts", class = "field-charts", style = "margin-top: clamp(18px, 2vw, 28px);",
                 div(class = "field-chart-card",
@@ -910,13 +1061,6 @@ ui <- dashboardPage(
               )
             )
           )
-        ),
-
-        tags$footer(class = "field-footer-strip",
-          div(class = "field-footer-item", icon("circle-nodes"), "Data-driven decisions"),
-          div(class = "field-footer-item", icon("location-crosshairs"), "Location intelligence"),
-          div(class = "field-footer-item", icon("cloud-sun-rain"), "Weather analytics"),
-          div(class = "field-footer-item", icon("seedling"), "Crop and yield insights")
         )
       )
     )
