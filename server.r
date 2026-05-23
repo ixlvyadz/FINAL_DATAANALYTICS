@@ -3,6 +3,11 @@ library(plotly)
 library(dplyr)
 library(jsonlite)
 library(randomForest)
+library(httr2)
+
+if (file.exists(".Renviron")) {
+  readRenviron(".Renviron")
+}
 
 utils::globalVariables(c(
   'Location', 'Crops', 'yeilds', 'Temperature', 'Year', 'State', 'Crop', 'Season',
@@ -59,6 +64,120 @@ theme_dark_plot <- function(p) {
   )
 }
 
+extract_gemini_text <- function(response_json) {
+  parts <- response_json$candidates[[1]]$content$parts
+  text_parts <- vapply(parts, function(part) {
+    part$text %||% ""
+  }, character(1))
+  text <- paste(text_parts[nzchar(text_parts)], collapse = "\n")
+  finish_reason <- response_json$candidates[[1]]$finishReason %||% ""
+
+  if (is.null(text) || !nzchar(trimws(text))) {
+    stop("Gemini returned an empty response", call. = FALSE)
+  }
+
+  text <- trimws(text)
+  if (identical(finish_reason, "MAX_TOKENS")) {
+    text <- paste(
+      text,
+      "",
+      "_Response limit reached. Ask me to continue if you want the rest._",
+      sep = "\n"
+    )
+  }
+
+  text
+}
+
+gemini_history_contents <- function(messages, limit = 6) {
+  if (length(messages) == 0) return(list())
+
+  recent <- tail(messages, limit)
+  lapply(recent, function(message) {
+    role <- if (identical(message$role, "assistant")) "model" else "user"
+    list(
+      role = role,
+      parts = list(list(text = as.character(message$text)))
+    )
+  })
+}
+
+call_gemini_assistant <- function(user_message, dashboard_context, messages = list()) {
+  api_key <- Sys.getenv("GEMINI_API_KEY", unset = "")
+  if (!nzchar(api_key)) {
+    stop("GEMINI_API_KEY is not configured. Add it to .Renviron and restart the app.", call. = FALSE)
+  }
+
+  model <- Sys.getenv("GEMINI_MODEL", unset = "gemini-3-flash-preview")
+  endpoint <- paste0(
+    "https://generativelanguage.googleapis.com/v1beta/models/",
+    model,
+    ":generateContent"
+  )
+
+  system_prompt <- paste(
+    "You are VieRose AI, a concise assistant embedded in a South India crop-yield Shiny dashboard.",
+    "Help users understand filters, charts, crop recommendation inputs, and data patterns.",
+    "Use the dashboard context when relevant. If the user asks for facts not present in the dashboard, say what you can infer and what you cannot verify.",
+    "Keep casual answers concise, but provide complete structured explanations when the user asks for a project explanation, recommendation, or professor-facing summary.",
+    "Do not provide professional farming, financial, medical, or legal advice.",
+    sep = "\n"
+  )
+
+  contextual_user_message <- paste(
+    "Dashboard context:",
+    dashboard_context,
+    "",
+    "User question:",
+    user_message,
+    sep = "\n"
+  )
+
+  contents <- c(
+    gemini_history_contents(messages),
+    list(list(
+      role = "user",
+      parts = list(list(text = contextual_user_message))
+    ))
+  )
+
+  body <- list(
+    systemInstruction = list(parts = list(list(text = system_prompt))),
+    contents = contents,
+    generationConfig = list(
+      temperature = 0.35,
+      maxOutputTokens = 1800
+    )
+  )
+
+  response <- httr2::request(endpoint) %>%
+    httr2::req_headers(
+      "Content-Type" = "application/json",
+      "x-goog-api-key" = api_key
+    ) %>%
+    httr2::req_body_json(body, auto_unbox = TRUE) %>%
+    httr2::req_timeout(30) %>%
+    httr2::req_perform()
+
+  extract_gemini_text(httr2::resp_body_json(response, simplifyVector = FALSE))
+}
+
+format_assistant_text <- function(text) {
+  escaped <- htmltools::htmlEscape(as.character(text))
+  rendered <- commonmark::markdown_html(
+    escaped,
+    hardbreaks = TRUE,
+    extensions = c("table", "strikethrough", "autolink")
+  )
+  HTML(rendered)
+}
+
+initial_ai_messages <- function() {
+  list(list(
+    role = "assistant",
+    text = "Hi, I am VieRose AI. Ask me to explain the dashboard, compare filtered records, or interpret the crop recommendation inputs."
+  ))
+}
 
 # Load ML model if present
 model_rf <- NULL
@@ -771,5 +890,139 @@ server <- function(input, output, session) {
     plot_ly(res, x = ~State, y = ~Val, color = ~Season, type = 'bar') %>%
       layout(barmode = 'stack', xaxis = list(title = ""), yaxis = list(title = "Yield"), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)')
   })
+
+  ai_messages <- reactiveVal(initial_ai_messages())
+  ai_typing <- reactiveVal(FALSE)
+  ai_request_id <- reactiveVal(0L)
+
+  assistant_context <- reactive({
+    d <- filtered()
+    selected_loc <- input$loc_filter %||% "All"
+    selected_crop <- input$crop_filter %||% "All"
+    selected_season <- input$season_filter %||% "All"
+    selected_year <- input$year_filter %||% max(data_clean$Year, na.rm = TRUE)
+
+    total_yield <- sum(d$Yield, na.rm = TRUE)
+    total_area <- sum(d$Area, na.rm = TRUE)
+    avg_yield <- mean(d$Yield, na.rm = TRUE)
+    if (is.nan(avg_yield)) avg_yield <- NA_real_
+
+    top_crop <- "--"
+    top_state <- "--"
+
+    if (nrow(d) > 0) {
+      crop_summary <- d %>%
+        group_by(Crop) %>%
+        summarise(Val = sum(Yield, na.rm = TRUE), .groups = "drop") %>%
+        arrange(desc(Val))
+      state_summary <- d %>%
+        group_by(State) %>%
+        summarise(Val = sum(Yield, na.rm = TRUE), .groups = "drop") %>%
+        arrange(desc(Val))
+
+      if (nrow(crop_summary) > 0) top_crop <- as.character(crop_summary$Crop[[1]])
+      if (nrow(state_summary) > 0) top_state <- as.character(state_summary$State[[1]])
+    }
+
+    pred <- pred_result()
+    pred_crop <- as.character(pred$crop)
+    pred_conf <- if (is.na(pred$conf)) "--" else paste0(round(pred$conf * 100, 1), "%")
+
+    paste(
+      "App: South India Crop Yield Explorer.",
+      "Seasonal dataset: 3,158 records from 2004-2019 across 11 districts and 13 crops.",
+      "Current filters:",
+      paste0("- Year: ", selected_year),
+      paste0("- Location: ", selected_loc),
+      paste0("- Crop: ", selected_crop),
+      paste0("- Season: ", selected_season),
+      "Filtered summary:",
+      paste0("- Records: ", format(nrow(d), big.mark = ",")),
+      paste0("- Total yield: ", format(round(total_yield, 0), big.mark = ",")),
+      paste0("- Total area: ", format(round(total_area, 0), big.mark = ",")),
+      paste0("- Average yield: ", ifelse(is.na(avg_yield), "--", format(round(avg_yield, 0), big.mark = ","))),
+      paste0("- Top crop by yield in filtered data: ", top_crop),
+      paste0("- Top location by yield in filtered data: ", top_state),
+      "Crop recommendation panel:",
+      paste0("- Current predicted crop: ", pred_crop),
+      paste0("- Current model confidence: ", pred_conf),
+      paste0("- N/P/K: ", input$input_n, "/", input$input_p, "/", input$input_k),
+      paste0("- Temperature: ", input$input_temp, " C"),
+      paste0("- Humidity: ", input$input_hum, "%"),
+      paste0("- pH: ", input$input_ph),
+      paste0("- Rainfall: ", input$input_rain, " mm"),
+      "Data quality note: seasonal temperatures below -10 C or above 60 C are excluded from temperature charts and correlation analysis.",
+      sep = "\n"
+    )
+  })
+
+  output$ai_messages <- renderUI({
+    rendered_messages <- lapply(ai_messages(), function(message) {
+      role <- if (identical(message$role, "user")) "user" else "assistant"
+      label <- if (identical(role, "user")) "You" else "VieRose AI"
+      div(
+        class = paste("ai-message", paste0("ai-message-", role)),
+        div(class = "ai-message-label", label),
+        div(class = "ai-message-text", format_assistant_text(message$text))
+      )
+    })
+
+    if (isTRUE(ai_typing())) {
+      rendered_messages <- c(rendered_messages, list(
+        div(
+          class = "ai-message ai-message-assistant ai-message-typing",
+          div(class = "ai-message-label", "VieRose AI"),
+          div(
+            class = "ai-typing-row",
+            span("Typing"),
+            span(class = "ai-typing-dots",
+              span(), span(), span()
+            )
+          )
+        )
+      ))
+    }
+
+    tagList(rendered_messages)
+  })
+  outputOptions(output, "ai_messages", suspendWhenHidden = FALSE)
+
+  observeEvent(input$ai_send, {
+    if (isTRUE(ai_typing())) return()
+
+    user_message <- trimws(input$ai_prompt %||% "")
+    if (!nzchar(user_message)) return()
+
+    previous_messages <- ai_messages()
+    dashboard_context <- assistant_context()
+    ai_messages(c(previous_messages, list(list(role = "user", text = user_message))))
+    ai_typing(TRUE)
+    updateTextAreaInput(session, "ai_prompt", value = "")
+
+    request_id <- ai_request_id() + 1L
+    ai_request_id(request_id)
+
+    session$onFlushed(function() {
+      response_text <- tryCatch(
+        call_gemini_assistant(user_message, dashboard_context, previous_messages),
+        error = function(e) paste("I could not reach Gemini right now:", conditionMessage(e))
+      )
+
+      if (identical(isolate(ai_request_id()), request_id)) {
+        ai_typing(FALSE)
+        ai_messages(c(
+          isolate(ai_messages()),
+          list(list(role = "assistant", text = response_text))
+        ))
+      }
+    }, once = TRUE)
+  }, ignoreInit = TRUE)
+
+  observeEvent(input$ai_clear, {
+    ai_request_id(ai_request_id() + 1L)
+    ai_typing(FALSE)
+    ai_messages(initial_ai_messages())
+    updateTextAreaInput(session, "ai_prompt", value = "")
+  }, ignoreInit = TRUE)
 
 }

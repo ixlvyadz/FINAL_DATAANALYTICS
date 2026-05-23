@@ -23,6 +23,8 @@ suppressPackageStartupMessages({
   library(dplyr)
   library(jsonlite)
   library(randomForest)
+  library(httr2)
+  library(commonmark)
 })
 
 source("ui.r")
